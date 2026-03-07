@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Ventas — Kavak MX</title>
+<style>
+:root{--kv:#FF6B35;--dk:#1A1A2E;--cd:#16213E;--sf:#0F3460;--tx:#E0E0E0;--mu:#888;
+      --gn:#4CAF50;--yw:#FFC107;--rd:#F44336;--pu:#7B61FF;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--dk);color:var(--tx);font-family:'Segoe UI',sans-serif;font-size:12px}
+.hdr{background:var(--kv);padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+.hdr h1{font-size:17px;font-weight:700;color:#fff}
+.hdr .meta{font-size:9px;color:rgba(255,255,255,.8);text-align:right;line-height:1.6}
+/* Summary cards — 4 columns × 2 rows */
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 20px}
+.card{background:var(--cd);border-radius:8px;padding:10px 12px;border-left:3px solid var(--kv)}
+.card.bl{border-left-color:var(--pu)} .card.mt{border-left-color:var(--gn)} .card.snap{border-left-color:var(--mu)}
+.cl{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.cv{font-size:22px;font-weight:700;color:#fff} .cs{font-size:9px;color:var(--mu);margin-top:2px}
+/* Tabs */
+.tabs{display:flex;gap:4px;padding:12px 20px 0;}
+.tab{background:rgba(255,255,255,.06);border:none;color:var(--mu);padding:9px 22px;cursor:pointer;
+      font-size:12px;font-weight:600;border-radius:8px 8px 0 0;transition:all .15s;letter-spacing:.2px}
+.tab:hover{background:var(--sf);color:var(--tx)}
+.tab.active{background:var(--sf);color:#fff;border-bottom:2px solid var(--kv)}
+.tab-cnt{font-size:10px;background:rgba(255,107,53,.25);color:var(--kv);
+          padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700}
+/* Sections */
+.sec{padding:0 20px 18px}
+.st{font-size:12px;font-weight:700;color:var(--kv);margin-bottom:6px;display:flex;align-items:center;gap:6px;padding-top:12px}
+.pill{background:var(--kv);color:#fff;font-size:9px;padding:1px 6px;border-radius:20px}
+.pn{background:rgba(255,255,255,.08);color:var(--mu);font-size:9px;padding:1px 6px;border-radius:20px}
+.leg{font-size:9px;color:var(--mu);margin-bottom:6px;line-height:1.5}
+.div{height:1px;background:rgba(255,255,255,.05);margin:0 20px 0}
+.tw{overflow-x:auto;border-radius:8px}
+table{width:100%;border-collapse:collapse;background:var(--cd)}
+thead tr{background:var(--sf)}
+th{padding:7px 9px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--mu);white-space:nowrap}
+td{padding:6px 9px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.top-row{background:rgba(76,175,80,.05)} .bot-row{background:rgba(244,67,54,.05)}
+.an{font-weight:600;white-space:nowrap} .sup{color:var(--mu);white-space:nowrap;font-size:10px}
+.num{text-align:center} .det{color:var(--rd);font-weight:700}
+/* avg daily pip/bl — teal accent */
+.adp{color:#26C6DA;font-weight:600} .adb{color:#AB47BC;font-weight:600}
+.badge{font-size:10px;padding:2px 5px;border-radius:10px;font-weight:700}
+.badge.gold{background:rgba(255,215,0,.2);color:#FFD700}
+.badge.silver{background:rgba(192,192,192,.2);color:#C0C0C0}
+.badge.bronze{background:rgba(205,127,50,.2);color:#CD7F32}
+.badge.danger{background:rgba(244,67,54,.2);color:var(--rd)}
+.badge.neutral{background:rgba(255,255,255,.06);color:var(--mu)}
+.str-badge{font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px}
+.str-green{background:rgba(76,175,80,.2);color:var(--gn)}
+.str-yellow{background:rgba(255,193,7,.2);color:var(--yw)}
+.str-red{background:rgba(244,67,54,.2);color:var(--rd)}
+.sw{display:flex;align-items:center;gap:4px}
+.sb{flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:4px;min-width:45px}
+.sf{height:100%;border-radius:4px}
+.sc-green{background:var(--gn)} .sc-yellow{background:var(--yw)} .sc-red{background:var(--rd)}
+.sn{font-size:10px;font-weight:700}
+th.g{border-top:2px solid var(--gn)} th.b{border-top:2px solid var(--pu)}
+th.c{border-top:2px solid var(--kv)} th.t{border-top:2px solid #26C6DA}
+th.p{border-top:2px solid #AB47BC}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>📊 Dashboard Pipeline & Performance — Kavak MX</h1>
+  <div class="meta">Actualizado: 07 Mar 2026 12:51 · Data Redshift ~24h lag<br>
+  Flujo = MTD Mar 2026 · Avg pip/bl = Little's Law · CR% ayer = 06 Mar</div>
+</div>
+
+<!-- 8 summary cards: 4+4 grid -->
+<div class="sum">
+  <div class="card"><div class="cl">Asig MTD Total</div><div class="cv">1354</div>
+    <div class="cs">FEM 617 · Fin 449 · Cash 288</div></div>
+  <div class="card mt"><div class="cl">Ventas MTD</div><div class="cv">525</div>
+    <div class="cs">Fin 324 · Cash 201</div></div>
+  <div class="card mt"><div class="cl">Entregas MTD</div><div class="cv">382</div>
+    <div class="cs">Fin 220 · Cash 162</div></div>
+  <div class="card mt"><div class="cl">Aprobaciones MTD</div><div class="cv">458</div>
+    <div class="cs">Handoffs FEM completados</div></div>
+  <div class="card"><div class="cl">STR Financing</div>
+    <div class="cv">89.8%</div>
+    <div class="cs">Ventas / (V + Cancel s/V)</div></div>
+  <div class="card"><div class="cl">STR Contado</div>
+    <div class="cv">82.4%</div>
+    <div class="cs">Ventas / (V + Cancel s/V)</div></div>
+  <div class="card snap"><div class="cl">Pipeline Hoy</div><div class="cv">503</div>
+    <div class="cs">FEM 284 · Fin 74 · Cash 145</div></div>
+  <div class="card snap bl"><div class="cl">Backlog Hoy</div><div class="cv">472</div>
+    <div class="cs">Fin 330 · Cash 142</div></div>
+</div>
+
+<div class="div"></div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button id="tab-fem" class="tab active" onclick="showTab('fem')">
+    👥 FEMs <span class="tab-cnt">18</span>
+  </button>
+  <button id="tab-fin" class="tab" onclick="showTab('fin')">
+    💳 EM Financing <span class="tab-cnt">15</span>
+  </button>
+  <button id="tab-con" class="tab" onclick="showTab('con')">
+    💵 EM Contado <span class="tab-cnt">8</span>
+  </button>
+</div>
+
+<!-- FEM SECTION -->
+<div id="sec-fem" class="sec">
+  <div class="st">👥 FEMs — Funnel de Crédito
+    <span class="pill">18 agentes</span>
+    <span class="pn">Flujo MTD · Pipeline snapshot</span></div>
+  <div class="leg">
+    <b>Score</b> = STR Aprobación (30%) + Vol. Aprobaciones MTD (30%) + SLA R→A (20%) + Contacto mismo día (10%) + CR% pip ayer (10%)<br>
+    <b>Avg pip/día</b> = promedio diario de casos activos en pipeline este mes (Little's Law) ·
+    <b>Mismo día %</b> = % asig MTD donde el FEM llamó o hizo WA ese mismo día ·
+    <b>SD ayer</b> = % de asig de ayer al que el FEM llamó o hizo WA ayer ·
+    <b>Cont/día</b> = llamadas outbound del agente por día MTD por cliente en pipeline · <b>Cont. ayer</b> = % pipeline al que el agente llamó o hizo WA ayer
+  </div>
+  <div class="tw"><table>
+    <thead><tr>
+      <th>#</th><th>Agente</th><th>Supervisor</th>
+      <th class="c">Asig MTD</th>
+      <th class="t">Avg pip/día</th>
+      <th class="c">Aprob MTD</th><th class="c">Cancel s/A</th><th class="c">⚠ s/3☎</th>
+      <th class="c">STR Aprob.</th><th class="c">SLA R→A</th>
+      <th class="b">Mismo día</th><th class="b">SD ayer</th><th class="b">Cont/día</th><th class="b">Cont. ayer</th>
+      <th>Score</th>
+    </tr></thead>
+    <tbody><tr class="top-row">
+          <td><span class="badge gold">#1</span></td>
+          <td class="an">Gloria Vargas</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">53</td>
+          <td class="num adp">8.8</td>
+          <td class="num"><b>41</b></td>
+          <td class="num">4</td>
+          <td class="num"><span class="det">1</span></td>
+          <td><span class="str-badge str-green">91.1%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">81.1%</span></td>
+          <td><span class="str-badge str-yellow">71.4%</span></td>
+          <td class="num">0.1</td>
+          <td><span class="str-badge str-yellow">61.1%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:90.9%"></div></div><span class="sn">90.9</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge silver">#2</span></td>
+          <td class="an">Miriam Maldonado</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">48</td>
+          <td class="num adp">8.0</td>
+          <td class="num"><b>37</b></td>
+          <td class="num">5</td>
+          <td class="num"><span class="det">1</span></td>
+          <td><span class="str-badge str-green">88.1%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-yellow">79.2%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.5</td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:90.4%"></div></div><span class="sn">90.4</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge bronze">#3</span></td>
+          <td class="an">Montserrath Villalba</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">64</td>
+          <td class="num adp">10.7</td>
+          <td class="num"><b>53</b></td>
+          <td class="num">3</td>
+          <td class="num"><span class="det">1</span></td>
+          <td><span class="str-badge str-green">94.6%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-yellow">78.1%</span></td>
+          <td><span class="str-badge str-yellow">55.6%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-yellow">44.4%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:90.0%"></div></div><span class="sn">90.0</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#4</span></td>
+          <td class="an">Joshua Gonzalez</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">42</td>
+          <td class="num adp">7.0</td>
+          <td class="num"><b>33</b></td>
+          <td class="num">6</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">84.6%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">85.7%</span></td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td class="num">0.2</td>
+          <td><span class="str-badge str-yellow">56.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:88.9%"></div></div><span class="sn">88.9</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#5</span></td>
+          <td class="an">Mauricio Espinobarros</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">41</td>
+          <td class="num adp">6.8</td>
+          <td class="num"><b>26</b></td>
+          <td class="num">6</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">81.2%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-yellow">78.0%</span></td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-green">72.7%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:88.8%"></div></div><span class="sn">88.8</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#6</span></td>
+          <td class="an">Ana Cano</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">45</td>
+          <td class="num adp">7.5</td>
+          <td class="num"><b>31</b></td>
+          <td class="num">7</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">81.6%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">91.1%</span></td>
+          <td><span class="str-badge str-yellow">78.6%</span></td>
+          <td class="num">0.1</td>
+          <td><span class="str-badge str-yellow">52.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:88.1%"></div></div><span class="sn">88.1</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#7</span></td>
+          <td class="an">Arely Arce</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">31</td>
+          <td class="num adp">5.2</td>
+          <td class="num"><b>33</b></td>
+          <td class="num">4</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">89.2%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">90.3%</span></td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td class="num">0.5</td>
+          <td><span class="str-badge str-red">18.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:86.9%"></div></div><span class="sn">86.9</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#8</span></td>
+          <td class="an">Ivan Oviedo</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">38</td>
+          <td class="num adp">6.3</td>
+          <td class="num"><b>24</b></td>
+          <td class="num">9</td>
+          <td class="num"><span class="det">3</span></td>
+          <td><span class="str-badge str-green">72.7%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-yellow">76.3%</span></td>
+          <td><span class="str-badge str-green">87.5%</span></td>
+          <td class="num">0.3</td>
+          <td><span class="str-badge str-yellow">69.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:85.7%"></div></div><span class="sn">85.7</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#9</span></td>
+          <td class="an">Valeria Torresespinosa</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">28</td>
+          <td class="num adp">4.7</td>
+          <td class="num"><b>15</b></td>
+          <td class="num">5</td>
+          <td class="num"><span class="det">1</span></td>
+          <td><span class="str-badge str-green">75.0%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">82.1%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-yellow">55.6%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:85.6%"></div></div><span class="sn">85.6</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#10</span></td>
+          <td class="an">David Sosa</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">17</td>
+          <td class="num adp">2.8</td>
+          <td class="num"><b>17</b></td>
+          <td class="num">5</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">77.3%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-green">82.4%</span></td>
+          <td>—</td>
+          <td class="num">0.2</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:80.8%"></div></div><span class="sn">80.8</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#11</span></td>
+          <td class="an">Pedro Jimenez</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">32</td>
+          <td class="num adp">5.3</td>
+          <td class="num"><b>20</b></td>
+          <td class="num">8</td>
+          <td class="num"><span class="det">2</span></td>
+          <td><span class="str-badge str-green">71.4%</span></td>
+          <td><span class="str-badge str-green">2.0d</span></td>
+          <td><span class="str-badge str-yellow">62.5%</span></td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td class="num">0.1</td>
+          <td><span class="str-badge str-yellow">43.8%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:80.7%"></div></div><span class="sn">80.7</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#12</span></td>
+          <td class="an">Joana Reyes</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">26</td>
+          <td class="num adp">4.3</td>
+          <td class="num"><b>22</b></td>
+          <td class="num">8</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">73.3%</span></td>
+          <td><span class="str-badge str-green">1.0d</span></td>
+          <td><span class="str-badge str-yellow">76.9%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td class="num">0.6</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:79.0%"></div></div><span class="sn">79.0</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#13</span></td>
+          <td class="an">Jezrrel Toledo</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">62</td>
+          <td class="num adp">10.3</td>
+          <td class="num"><b>45</b></td>
+          <td class="num">3</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-green">93.8%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-green">90.3%</span></td>
+          <td><span class="str-badge str-green">88.9%</span></td>
+          <td class="num">0.7</td>
+          <td><span class="str-badge str-yellow">65.8%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:73.8%"></div></div><span class="sn">73.8</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#14</span></td>
+          <td class="an">Ana Zamora</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">46</td>
+          <td class="num adp">7.7</td>
+          <td class="num"><b>35</b></td>
+          <td class="num">7</td>
+          <td class="num"><span class="det">2</span></td>
+          <td><span class="str-badge str-green">83.3%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-green">87.0%</span></td>
+          <td><span class="str-badge str-green">80.0%</span></td>
+          <td class="num">0.5</td>
+          <td><span class="str-badge str-yellow">43.5%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:68.0%"></div></div><span class="sn">68.0</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#15</span></td>
+          <td class="an">Maria De</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">44</td>
+          <td class="num adp">7.3</td>
+          <td class="num"><b>26</b></td>
+          <td class="num">8</td>
+          <td class="num"><span class="det">1</span></td>
+          <td><span class="str-badge str-green">76.5%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-green">90.9%</span></td>
+          <td><span class="str-badge str-green">84.6%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-yellow">45.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:66.6%"></div></div><span class="sn">66.6</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#16</span></td>
+          <td class="an">Victoria Del</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">0</td>
+          <td class="num adp">0.0</td>
+          <td class="num"><b>0</b></td>
+          <td class="num">0</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td>—</td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-red" style="width:0.0%"></div></div><span class="sn">0.0</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#17</span></td>
+          <td class="an">Valeriano Bautista</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">0</td>
+          <td class="num adp">0.0</td>
+          <td class="num"><b>0</b></td>
+          <td class="num">0</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td>—</td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-red" style="width:0.0%"></div></div><span class="sn">0.0</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#18</span></td>
+          <td class="an">Luis Rojasvalderrabano</td>
+          <td class="sup">FEM Lead</td>
+          <td class="num">0</td>
+          <td class="num adp">0.0</td>
+          <td class="num"><b>0</b></td>
+          <td class="num">0</td>
+          <td class="num">—</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-green">0.0d</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td>—</td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-red" style="width:0.0%"></div></div><span class="sn">0.0</span></div></td>
+        </tr></tbody>
+  </table></div>
+</div>
+
+<!-- EM FINANCING SECTION -->
+<div id="sec-fin" class="sec" style="display:none">
+  <div class="st">💳 EMs Financing — Funnel Venta & Entrega
+    <span class="pill">15 agentes</span>
+    <span class="pn">Flujo MTD · Pipeline/Backlog snapshot</span></div>
+  <div class="leg">
+    <b>Score</b> = STR Venta (20%) + Vol. Ventas+Entregas MTD (40%) + SLA V→E (20%) + CR% pip ayer (10%) + CR% bl ayer (10%)<br>
+    <b>Avg pip/día</b> = promedio diario casos en pipeline · <b>Avg bl/día</b> = promedio diario casos en backlog (Little's Law, MTD) ·
+    <b>Mismo día %</b> = % asig MTD donde el EM llamó o hizo WA ese mismo día ·
+    <b>SD ayer</b> = % de asig de ayer al que el EM llamó o hizo WA ayer ·
+    <b>Cont/día</b> = llamadas outbound del agente por día MTD por cliente en pipeline · <b>Cont. ayer pip/bl</b> = % al que el agente llamó o hizo WA ayer
+  </div>
+  <div class="tw"><table>
+    <thead><tr>
+      <th>#</th><th>Agente</th><th>Supervisor</th>
+      <th class="c">Asig MTD</th>
+      <th class="t">Avg pip/día</th>
+      <th class="c">Ventas MTD</th>
+      <th class="p">Avg bl/día</th>
+      <th class="c">Entrega MTD</th>
+      <th class="c">Cancel s/V</th><th class="c">⚠ s/3☎</th><th class="c">Cancel c/V</th>
+      <th class="c">STR Venta</th><th class="c">SLA V→E</th><th class="c">Detract.</th>
+      <th class="b">Mismo día</th><th class="b">SD ayer</th><th class="b">Cont/día</th>
+      <th class="b">Cont. ayer pip</th><th class="b">Cont. ayer bl</th>
+      <th>Score</th>
+    </tr></thead>
+    <tbody><tr class="top-row">
+          <td><span class="badge gold">#1</span></td>
+          <td class="an">Armando Flores</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">37</td>
+          <td class="num adp">6.2</td>
+          <td class="num"><b>27</b></td>
+          <td class="num adb">4.5</td>
+          <td class="num"><b>23</b></td>
+          <td class="num">2</td>
+          <td class="num">—</td>
+          <td class="num">3</td>
+          <td><span class="str-badge str-green">93.1%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">70.3%</span></td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td class="num">1.2</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-green">88.5%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:91.8%"></div></div><span class="sn">91.8</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge silver">#2</span></td>
+          <td class="an">Ivonne Tello</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">37</td>
+          <td class="num adp">6.2</td>
+          <td class="num"><b>31</b></td>
+          <td class="num adb">5.2</td>
+          <td class="num"><b>13</b></td>
+          <td class="num">3</td>
+          <td class="num"><span class="det">1</span></td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">91.2%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">91.9%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">1.0</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-green">71.9%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:89.7%"></div></div><span class="sn">89.7</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge bronze">#3</span></td>
+          <td class="an">Evelyn Cruz</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">40</td>
+          <td class="num adp">6.7</td>
+          <td class="num"><b>33</b></td>
+          <td class="num adb">5.5</td>
+          <td class="num"><b>22</b></td>
+          <td class="num">1</td>
+          <td class="num">—</td>
+          <td class="num">2</td>
+          <td><span class="str-badge str-green">97.1%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">90.0%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.3</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-yellow">53.3%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:89.0%"></div></div><span class="sn">89.0</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#4</span></td>
+          <td class="an">Cristian Herrera</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">31</td>
+          <td class="num adp">5.2</td>
+          <td class="num"><b>24</b></td>
+          <td class="num adb">4.0</td>
+          <td class="num"><b>17</b></td>
+          <td class="num">3</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">88.9%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">77.4%</span></td>
+          <td><span class="str-badge str-green">83.3%</span></td>
+          <td class="num">0.6</td>
+          <td><span class="str-badge str-green">80.0%</span></td>
+          <td><span class="str-badge str-green">87.1%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:88.8%"></div></div><span class="sn">88.8</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#5</span></td>
+          <td class="an">Brandon Guevara</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">46</td>
+          <td class="num adp">7.7</td>
+          <td class="num"><b>36</b></td>
+          <td class="num adb">6.0</td>
+          <td class="num"><b>23</b></td>
+          <td class="num">1</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">97.3%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">84.8%</span></td>
+          <td><span class="str-badge str-green">80.0%</span></td>
+          <td class="num">0.8</td>
+          <td><span class="str-badge str-green">75.0%</span></td>
+          <td><span class="str-badge str-yellow">58.6%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:87.1%"></div></div><span class="sn">87.1</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#6</span></td>
+          <td class="an">Dana Fernandez</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">33</td>
+          <td class="num adp">5.5</td>
+          <td class="num"><b>27</b></td>
+          <td class="num adb">4.5</td>
+          <td class="num"><b>18</b></td>
+          <td class="num">4</td>
+          <td class="num"><span class="det">1</span></td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">87.1%</span></td>
+          <td><span class="str-badge str-green">5.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">87.9%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.7</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-yellow">61.9%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:86.5%"></div></div><span class="sn">86.5</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#7</span></td>
+          <td class="an">Alberto Vazquezaragon</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">31</td>
+          <td class="num adp">5.2</td>
+          <td class="num"><b>24</b></td>
+          <td class="num adb">4.0</td>
+          <td class="num"><b>22</b></td>
+          <td class="num">3</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">88.9%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">87.1%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.3</td>
+          <td><span class="str-badge str-green">88.9%</span></td>
+          <td><span class="str-badge str-yellow">54.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:86.4%"></div></div><span class="sn">86.4</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#8</span></td>
+          <td class="an">Miguel Almeyda</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">28</td>
+          <td class="num adp">4.7</td>
+          <td class="num"><b>23</b></td>
+          <td class="num adb">3.8</td>
+          <td class="num"><b>14</b></td>
+          <td class="num">2</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">92.0%</span></td>
+          <td><span class="str-badge str-yellow">6.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">82.1%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.3</td>
+          <td><span class="str-badge str-green">71.4%</span></td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:83.6%"></div></div><span class="sn">83.6</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#9</span></td>
+          <td class="an">Bryan Cortes</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">38</td>
+          <td class="num adp">6.3</td>
+          <td class="num"><b>30</b></td>
+          <td class="num adb">5.0</td>
+          <td class="num"><b>17</b></td>
+          <td class="num">3</td>
+          <td class="num">—</td>
+          <td class="num">4</td>
+          <td><span class="str-badge str-green">90.9%</span></td>
+          <td><span class="str-badge str-yellow">6.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">89.5%</span></td>
+          <td><span class="str-badge str-yellow">60.0%</span></td>
+          <td class="num">1.7</td>
+          <td><span class="str-badge str-green">75.0%</span></td>
+          <td><span class="str-badge str-yellow">61.3%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:83.2%"></div></div><span class="sn">83.2</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#10</span></td>
+          <td class="an">Jose Gonzalezflores</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">21</td>
+          <td class="num adp">3.5</td>
+          <td class="num"><b>17</b></td>
+          <td class="num adb">2.8</td>
+          <td class="num"><b>13</b></td>
+          <td class="num">3</td>
+          <td class="num">—</td>
+          <td class="num">2</td>
+          <td><span class="str-badge str-green">85.0%</span></td>
+          <td><span class="str-badge str-yellow">8.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">0.8</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td><span class="str-badge str-green">75.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:83.1%"></div></div><span class="sn">83.1</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#11</span></td>
+          <td class="an">Mauricio Orozcoorduna</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">65</td>
+          <td class="num adp">10.8</td>
+          <td class="num"><b>27</b></td>
+          <td class="num adb">4.5</td>
+          <td class="num"><b>14</b></td>
+          <td class="num">2</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">93.1%</span></td>
+          <td><span class="str-badge str-green">5.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">56.9%</span></td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td class="num">1.3</td>
+          <td><span class="str-badge str-green">71.4%</span></td>
+          <td><span class="str-badge str-yellow">41.2%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:82.7%"></div></div><span class="sn">82.7</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#12</span></td>
+          <td class="an">Victor Aguilar</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">33</td>
+          <td class="num adp">5.5</td>
+          <td class="num"><b>23</b></td>
+          <td class="num adb">3.8</td>
+          <td class="num"><b>10</b></td>
+          <td class="num">5</td>
+          <td class="num">—</td>
+          <td class="num">3</td>
+          <td><span class="str-badge str-green">82.1%</span></td>
+          <td><span class="str-badge str-yellow">6.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">78.8%</span></td>
+          <td><span class="str-badge str-green">85.7%</span></td>
+          <td class="num">0.6</td>
+          <td><span class="str-badge str-yellow">66.7%</span></td>
+          <td><span class="str-badge str-green">80.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:82.5%"></div></div><span class="sn">82.5</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#13</span></td>
+          <td class="an">Gabriel Hoyos</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">2</td>
+          <td class="num adp">0.3</td>
+          <td class="num"><b>2</b></td>
+          <td class="num adb">0.3</td>
+          <td class="num"><b>8</b></td>
+          <td class="num">2</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td><span class="str-badge str-yellow">6.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-yellow" style="width:48.1%"></div></div><span class="sn">48.1</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#14</span></td>
+          <td class="an">Miguel Munoz</td>
+          <td class="sup">Alejandra M.</td>
+          <td class="num">3</td>
+          <td class="num adp">0.5</td>
+          <td class="num"><b>0</b></td>
+          <td class="num adb">0.0</td>
+          <td class="num"><b>3</b></td>
+          <td class="num">2</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-green">2.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td>—</td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-red" style="width:25.1%"></div></div><span class="sn">25.1</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#15</span></td>
+          <td class="an">Dharien Lucero</td>
+          <td class="sup">Esteban H.</td>
+          <td class="num">4</td>
+          <td class="num adp">0.7</td>
+          <td class="num"><b>0</b></td>
+          <td class="num adb">0.0</td>
+          <td class="num"><b>3</b></td>
+          <td class="num">1</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-red">21.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-red">25.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td class="num">0.0</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-red" style="width:8.0%"></div></div><span class="sn">8.0</span></div></td>
+        </tr></tbody>
+  </table></div>
+</div>
+
+<!-- EM CONTADO SECTION -->
+<div id="sec-con" class="sec" style="display:none">
+  <div class="st">💵 EMs Contado — Funnel Venta & Entrega
+    <span class="pill">8 agentes</span>
+    <span class="pn">Flujo MTD · Pipeline/Backlog snapshot</span></div>
+  <div class="leg">
+    <b>Score</b> = STR Venta (20%) + Vol. Ventas+Entregas MTD (40%) + SLA V→E (20%) + CR% pip (10%) + CR% bl (10%)
+  </div>
+  <div class="tw"><table>
+    <thead><tr>
+      <th>#</th><th>Agente</th><th>Supervisor</th>
+      <th class="c">Asig MTD</th>
+      <th class="t">Avg pip/día</th>
+      <th class="c">Ventas MTD</th>
+      <th class="p">Avg bl/día</th>
+      <th class="c">Entrega MTD</th>
+      <th class="c">Cancel s/V</th><th class="c">⚠ s/3☎</th><th class="c">Cancel c/V</th>
+      <th class="c">STR Venta</th><th class="c">SLA V→E</th><th class="c">Detract.</th>
+      <th class="b">Mismo día</th><th class="b">SD ayer</th><th class="b">Cont/día</th>
+      <th class="b">Cont. ayer pip</th><th class="b">Cont. ayer bl</th>
+      <th>Score</th>
+    </tr></thead>
+    <tbody><tr class="top-row">
+          <td><span class="badge gold">#1</span></td>
+          <td class="an">Ivan Espinosa</td>
+          <td class="sup">Jesús E.</td>
+          <td class="num">41</td>
+          <td class="num adp">6.8</td>
+          <td class="num"><b>23</b></td>
+          <td class="num adb">3.8</td>
+          <td class="num"><b>14</b></td>
+          <td class="num">5</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">82.1%</span></td>
+          <td><span class="str-badge str-green">2.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">70.7%</span></td>
+          <td><span class="str-badge str-yellow">70.3%</span></td>
+          <td class="num">0.7</td>
+          <td><span class="str-badge str-green">82.4%</span></td>
+          <td><span class="str-badge str-yellow">52.9%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:87.1%"></div></div><span class="sn">87.1</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge silver">#2</span></td>
+          <td class="an">Samantha Sanchez</td>
+          <td class="sup">Arisbeth O.</td>
+          <td class="num">43</td>
+          <td class="num adp">7.2</td>
+          <td class="num"><b>33</b></td>
+          <td class="num adb">5.5</td>
+          <td class="num"><b>25</b></td>
+          <td class="num">5</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">86.8%</span></td>
+          <td><span class="str-badge str-green">2.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">86.0%</span></td>
+          <td><span class="str-badge str-yellow">60.0%</span></td>
+          <td class="num">0.2</td>
+          <td><span class="str-badge str-yellow">68.8%</span></td>
+          <td><span class="str-badge str-yellow">57.1%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:87.1%"></div></div><span class="sn">87.1</span></div></td>
+        </tr><tr class="top-row">
+          <td><span class="badge bronze">#3</span></td>
+          <td class="an">Kelly Hernandez</td>
+          <td class="sup">Jesús E.</td>
+          <td class="num">29</td>
+          <td class="num adp">4.8</td>
+          <td class="num"><b>26</b></td>
+          <td class="num adb">4.3</td>
+          <td class="num"><b>27</b></td>
+          <td class="num">1</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">96.3%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">93.1%</span></td>
+          <td><span class="str-badge str-green">87.5%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-green">83.3%</span></td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:86.9%"></div></div><span class="sn">86.9</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#4</span></td>
+          <td class="an">Maximiliano Morales</td>
+          <td class="sup">Arisbeth O.</td>
+          <td class="num">40</td>
+          <td class="num adp">6.7</td>
+          <td class="num"><b>26</b></td>
+          <td class="num adb">4.3</td>
+          <td class="num"><b>18</b></td>
+          <td class="num">5</td>
+          <td class="num"><span class="det">1</span></td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">83.9%</span></td>
+          <td><span class="str-badge str-green">3.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">77.5%</span></td>
+          <td><span class="str-badge str-green">81.8%</span></td>
+          <td class="num">0.4</td>
+          <td><span class="str-badge str-yellow">61.5%</span></td>
+          <td><span class="str-badge str-yellow">57.1%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:84.4%"></div></div><span class="sn">84.4</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#5</span></td>
+          <td class="an">Adalupxi Navarro</td>
+          <td class="sup">Jesús E.</td>
+          <td class="num">49</td>
+          <td class="num adp">8.2</td>
+          <td class="num"><b>35</b></td>
+          <td class="num adb">5.8</td>
+          <td class="num"><b>33</b></td>
+          <td class="num">11</td>
+          <td class="num"><span class="det">1</span></td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">76.1%</span></td>
+          <td><span class="str-badge str-green">3.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">87.8%</span></td>
+          <td><span class="str-badge str-yellow">50.0%</span></td>
+          <td class="num">0.9</td>
+          <td><span class="str-badge str-yellow">47.4%</span></td>
+          <td><span class="str-badge str-red">34.8%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:79.2%"></div></div><span class="sn">79.2</span></div></td>
+        </tr><tr class="">
+          <td><span class="badge neutral">#6</span></td>
+          <td class="an">Angel Cedillo</td>
+          <td class="sup">Jesús E.</td>
+          <td class="num">37</td>
+          <td class="num adp">6.2</td>
+          <td class="num"><b>18</b></td>
+          <td class="num adb">3.0</td>
+          <td class="num"><b>8</b></td>
+          <td class="num">6</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">75.0%</span></td>
+          <td><span class="str-badge str-green">4.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">73.0%</span></td>
+          <td><span class="str-badge str-yellow">75.0%</span></td>
+          <td class="num">0.1</td>
+          <td><span class="str-badge str-red">28.6%</span></td>
+          <td><span class="str-badge str-yellow">68.4%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:79.0%"></div></div><span class="sn">79.0</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#7</span></td>
+          <td class="an">Erick Flandes</td>
+          <td class="sup">Arisbeth O.</td>
+          <td class="num">36</td>
+          <td class="num adp">6.0</td>
+          <td class="num"><b>30</b></td>
+          <td class="num adb">5.0</td>
+          <td class="num"><b>21</b></td>
+          <td class="num">6</td>
+          <td class="num">—</td>
+          <td class="num">1</td>
+          <td><span class="str-badge str-green">83.3%</span></td>
+          <td><span class="str-badge str-green">3.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-yellow">61.1%</span></td>
+          <td><span class="str-badge str-red">40.0%</span></td>
+          <td class="num">0.1</td>
+          <td><span class="str-badge str-red">17.5%</span></td>
+          <td><span class="str-badge str-yellow">44.4%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:78.6%"></div></div><span class="sn">78.6</span></div></td>
+        </tr><tr class="bot-row">
+          <td><span class="badge danger">#8</span></td>
+          <td class="an">Victor Ledesma</td>
+          <td class="sup">Arisbeth O.</td>
+          <td class="num">13</td>
+          <td class="num adp">2.2</td>
+          <td class="num"><b>10</b></td>
+          <td class="num adb">1.7</td>
+          <td class="num"><b>16</b></td>
+          <td class="num">4</td>
+          <td class="num">—</td>
+          <td class="num">0</td>
+          <td><span class="str-badge str-green">71.4%</span></td>
+          <td><span class="str-badge str-green">3.0d</span></td>
+          <td>—</td>
+          <td><span class="str-badge str-green">100.0%</span></td>
+          <td>—</td>
+          <td class="num">0.2</td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><span class="str-badge str-red">0.0%</span></td>
+          <td><div class="sw"><div class="sb"><div class="sf sc-green" style="width:70.0%"></div></div><span class="sn">70.0</span></div></td>
+        </tr></tbody>
+  </table></div>
+</div>
+
+<script>
+function showTab(t) {
+  ['fem','fin','con'].forEach(function(x) {
+    document.getElementById('sec-'+x).style.display = x===t ? 'block' : 'none';
+    document.getElementById('tab-'+x).classList.toggle('active', x===t);
+  });
+}
+</script>
+
+</body></html>
