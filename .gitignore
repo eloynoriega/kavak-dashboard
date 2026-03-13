@@ -1,0 +1,5 @@
+# Solo publicar el HTML del dashboard — nunca credenciales ni scripts
+*
+!index.html
+!index2.html
+!.gitignore
