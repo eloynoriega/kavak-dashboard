@@ -48,6 +48,9 @@
   .contado { background:#eafaf1; color:#1e8449; border:1px solid #a9dfbf; }
   .fin-pend { background:#fff8e1; color:#e65100; border:1px solid #ffcc80; }
   .dist-bar { background: white; border-radius: 8px; padding: 12px 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); font-size: 13px; }
+  .sources-bar { background: #1a252f; color: #aab7c4; font-size: 12px; padding: 7px 30px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .sources-bar span { display: flex; align-items: center; gap: 5px; }
+  .sources-bar b { color: white; }
   .filter-bar { display:none; background:#1a5276; color:white; padding:10px 30px; align-items:center; gap:16px; font-size:13px; }
   .filter-bar b { font-size:15px; }
   .filter-bar button { background:white; color:#1a5276; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:700; }
@@ -106,6 +109,12 @@ function resetFilter() {
   <div class="sub">Financing Aprobado (KC + Externo) + Contado · No Trade In · 13 Mar 2026 · 203 en pipeline · 38 devoluciones separadas</div>
 </div>
 
+<div class="sources-bar">
+  <span>📋 Pipeline (SF): <b>13 Mar 2026 11:08</b></span>
+  <span>💬 Mensajes: <b>13 Mar 2026 06:58</b></span>
+  <span>📞 Última llamada: <b>12 Mar 2026</b></span>
+  <span style="margin-left:auto;opacity:.6">Generado: 13 Mar 2026 16:29</span>
+</div>
 <div class="filter-bar" id="filter-bar">
   <b>🔍 Filtrando:</b> <span id="filter-label"></span>
   <button onclick="resetFilter()">✕ Ver todos</button>
@@ -10699,6 +10708,46 @@ Una vez que se haga la liquidación de plan de pagos, comenzaremos con el proces
             <span class="badge tibio">🌤 TIBIO</span>
           </td>
           <td>
+            <b>antonio alderete gomez</b><br>
+            <small style="color:#666">Stock 490414</small>
+          </td>
+          <td style="text-align:center"><b>2d</b></td>
+          <td>
+            <b>Samantha Sanchez</b><br>
+            <small style="color:#999">Arisbeth O.</small>
+          </td>
+          <td>
+            <small style="color:#777">Opp. Owner:</small><br>
+            <b style="color:#e65100">Luz María Lara</b>
+          </td>
+          <td style="font-size:12px;color:#555">
+            Cliente con contacto reciente (1-3 días), sin señales de bloqueo. Aging: 2d.
+          </td>
+          <td style="font-size:12px;color:#777;font-style:italic">
+            En proceso de devolución — no cobrar hasta cambio de ownership
+          </td>
+          <td>
+            <button onclick="document.getElementById('d490414').style.display=document.getElementById('d490414').style.display==='none'?'block':'none'"
+              style="font-size:11px;padding:2px 6px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#f8f9fa">
+              30 msgs
+            </button>
+            <div id="d490414" style="display:none;margin-top:4px;max-width:320px;border:1px solid #eee;padding:6px;border-radius:6px;background:#fafafa;max-height:200px;overflow-y:auto">
+              <div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 09:34</span><br>En seguimiento a tus mensajes, informo que la sede Kavak San Ángel solo cuenta con cita de ingreso a diagnóstico de gara</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:24</span><br>Buenos días Sr.como está? Necesito hablar con usted me puede hacer favor de llamarme.</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:25</span><br>¡Buenos días, Antonio! Espero que estés muy bien.
+
+Entiendo que prefieres hablar por teléfono, pero lamentablemente no t</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:28</span><br>Ke pena k no me pueda llamar.dejame ver k puedo hacer voy a  kavak  gracias</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:29</span><br>¡Claro, Antonio! Que te vaya muy bien en tu visita a Kavak. 
+
+Recuerda que si necesitas algo antes o después de tu visit</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:30</span><br>Muchas gracias buen día</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:31</span><br>¡Buen día, Antonio! Que todo salga muy bien en Kavak. Aquí estaré si me necesitas. 😊</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 15:30</span><br>Hola Sr. me puede hacer favor de llamarme x favor gracias</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 16:21</span><br>*[Samantha]*
+le mrco</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:29</span><br>Xfa</span></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr style="background:#fffde7;border-left:3px solid #f9a825">
+          <td>
+            <span class="tipo-badge contado">CONTADO</span>
+            <span class="badge tibio">🌤 TIBIO</span>
+          </td>
+          <td>
             <b>gerardo oliver hernandez vidal</b><br>
             <small style="color:#666">Stock 489876</small>
           </td>
@@ -10794,46 +10843,6 @@ Una vez que se haga la liquidación de plan de pagos, comenzaremos con el proces
             </button>
             <div id="d486100" style="display:none;margin-top:4px;max-width:320px;border:1px solid #eee;padding:6px;border-radius:6px;background:#fafafa;max-height:200px;overflow-y:auto">
               <div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 15:24</span><br>Ya lo entregamos todo</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 15:30</span><br>Dame un momento, por favor. Enseguida te confirmo por aquí.</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 15:32</span><br>Gracias, ya lo reviso.</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:29</span><br>esto di de enganche mas las 2 mensualidades y los 8  mil</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:29</span><br>son $55,000</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:29</span><br>Esto es lo que he dado hasta el mom</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:30</span><br>cotizacion (55).pdf</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 16:30</span><br>De acuerdo Ana, no te preocupes, lo valido.</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:44</span><br>Gracias</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 16:48</span><br>De acuerdo Ana.</span></div>
-            </div>
-          </td>
-        </tr>
-
-        <tr style="background:#fffde7;border-left:3px solid #f9a825">
-          <td>
-            <span class="tipo-badge contado">CONTADO</span>
-            <span class="badge hot">🔥 HOT</span>
-          </td>
-          <td>
-            <b>antonio alderete gomez</b><br>
-            <small style="color:#666">Stock 490414</small>
-          </td>
-          <td style="text-align:center"><b>2d</b></td>
-          <td>
-            <b>Samantha Sanchez</b><br>
-            <small style="color:#999">Arisbeth O.</small>
-          </td>
-          <td>
-            <small style="color:#777">Opp. Owner:</small><br>
-            <b style="color:#e65100">Luz María Lara</b>
-          </td>
-          <td style="font-size:12px;color:#555">
-            Cliente activo — último mensaje hace menos de 24h. Aging: 2d.
-          </td>
-          <td style="font-size:12px;color:#777;font-style:italic">
-            En proceso de devolución — no cobrar hasta cambio de ownership
-          </td>
-          <td>
-            <button onclick="document.getElementById('d490414').style.display=document.getElementById('d490414').style.display==='none'?'block':'none'"
-              style="font-size:11px;padding:2px 6px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#f8f9fa">
-              30 msgs
-            </button>
-            <div id="d490414" style="display:none;margin-top:4px;max-width:320px;border:1px solid #eee;padding:6px;border-radius:6px;background:#fafafa;max-height:200px;overflow-y:auto">
-              <div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 09:34</span><br>En seguimiento a tus mensajes, informo que la sede Kavak San Ángel solo cuenta con cita de ingreso a diagnóstico de gara</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:24</span><br>Buenos días Sr.como está? Necesito hablar con usted me puede hacer favor de llamarme.</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:25</span><br>¡Buenos días, Antonio! Espero que estés muy bien.
-
-Entiendo que prefieres hablar por teléfono, pero lamentablemente no t</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:28</span><br>Ke pena k no me pueda llamar.dejame ver k puedo hacer voy a  kavak  gracias</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:29</span><br>¡Claro, Antonio! Que te vaya muy bien en tu visita a Kavak. 
-
-Recuerda que si necesitas algo antes o después de tu visit</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 10:30</span><br>Muchas gracias buen día</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 10:31</span><br>¡Buen día, Antonio! Que todo salga muy bien en Kavak. Aquí estaré si me necesitas. 😊</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 15:30</span><br>Hola Sr. me puede hacer favor de llamarme x favor gracias</span></div><div style="text-align:right;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#f5f5f5;color:#555;padding:4px 8px;border-radius:8px;font-size:11px"><b>Kavak</b> <span style="color:#999">03-12 16:21</span><br>*[Samantha]*
-le mrco</span></div><div style="text-align:left;margin:3px 0"><span style="display:inline-block;max-width:80%;background:#e3f2fd;color:#1565c0;padding:4px 8px;border-radius:8px;font-size:11px"><b>Cliente</b> <span style="color:#999">03-12 16:29</span><br>Xfa</span></div>
             </div>
           </td>
         </tr>
