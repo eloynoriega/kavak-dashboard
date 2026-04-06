@@ -2543,13 +2543,16 @@ document.addEventListener('DOMContentLoaded', () => {
   Chart.register(ChartDataLabels);
   initHubSelect();
   refreshAll();
-  renderCohortChart();
   renderBacklogSummary();
   renderCohortEntregaChart();
   renderPrePost();
   renderCancelChart();
-  renderNPSSection();
-  renderNPSSection();
+  // Charts que necesitan que el DOM esté pintado para medir el canvas
+  setTimeout(() => {
+    renderCohortChart();
+    renderSLADeliveryChart();
+    renderNPSSection();
+  }, 150);
 });
 </script>
 </body>
