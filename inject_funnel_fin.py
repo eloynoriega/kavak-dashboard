@@ -62,9 +62,11 @@ if FUNNEL_MARKER_START in html:
 
 if 'renderFunnelFin' in html:
     s = html.find('// ── FUNNEL FIN JS')
-    e = html.find('// ── END FUNNEL FIN JS') + len('// ── END FUNNEL FIN JS')
-    if s != -1 and e > s:
-        html = html[:s] + html[e+1:]
+    e_marker = html.find('// ── END FUNNEL FIN JS')
+    if s != -1 and e_marker > s:
+        # Skip to end of the end-marker LINE (including any trailing ─ chars)
+        e = html.find('\n', e_marker) + 1
+        html = html[:s] + html[e:]
         print("  ↩ Removed existing funnel JS")
 
 # ── 3. Inject data vars before rawBacklogSummary ─────────────────────────────
