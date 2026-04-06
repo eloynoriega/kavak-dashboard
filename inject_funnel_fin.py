@@ -327,6 +327,13 @@ html = wire(html,
     '  renderFunnelFin();\n  renderSLADeliveryChart();\n}',
     'refreshAll()')
 
+# Remove any stale duplicate renderNPSSection from DOMContentLoaded before wiring
+if '  renderNPSSection();\n  renderFunnelFin();\n  renderNPSSection();\n});' in html:
+    html = html.replace(
+        '  renderNPSSection();\n  renderFunnelFin();\n  renderNPSSection();\n});',
+        '  renderFunnelFin();\n  renderNPSSection();\n});', 1)
+    print("  ↩ Deduped double renderNPSSection in DOMContentLoaded")
+
 html = wire(html,
     '  renderNPSSection();\n});',
     '  renderFunnelFin();\n  renderNPSSection();\n});',
