@@ -952,6 +952,13 @@ function renderKPIs() {
   // ── KPI array ─────────────────────────────────────────────────────────────
   const kpis = [
     {
+      label: isSem ? 'Reservas Netas Sem.' : 'Reservas Netas MTD',
+      value: fmtN(res.total),
+      sub:   `Fin ${fmtN(res.fin)} · Cash ${fmtN(res.cash)}`,
+      delta: delta(res.total, resL.total, true),
+      color: '',
+    },
+    {
       label: 'Ventas',
       value: fmtN(vd.ventas_total),
       sub:   `Fin ${fmtN(vd.ventas_fin)} · Cash ${fmtN(vd.ventas_cash)}`,
