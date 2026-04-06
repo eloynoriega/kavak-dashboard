@@ -2120,7 +2120,6 @@ function refreshAll() {
   renderCohortEntregaChart();
   renderCancelChart();
   renderNPSSection();
-  renderNPSSection();
   renderSLADeliveryChart();
 }
 
@@ -2542,17 +2541,14 @@ function showNPSTestimonios(motivo) {
 document.addEventListener('DOMContentLoaded', () => {
   Chart.register(ChartDataLabels);
   initHubSelect();
-  refreshAll();
-  renderBacklogSummary();
-  renderCohortEntregaChart();
   renderPrePost();
-  renderCancelChart();
-  // Charts que necesitan que el DOM esté pintado para medir el canvas
   setTimeout(() => {
+    refreshAll();
     renderCohortChart();
-    renderSLADeliveryChart();
-    renderNPSSection();
-  }, 150);
+    renderBacklogSummary();
+    renderCohortEntregaChart();
+    renderCancelChart();
+  }, 100);
 });
 </script>
 </body>
