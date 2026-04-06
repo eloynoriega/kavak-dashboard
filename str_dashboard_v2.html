@@ -2537,25 +2537,15 @@ function showNPSTestimonios(motivo) {
 // BOOT
 // ═══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  try {
-    Chart.register(ChartDataLabels);
-    initHubSelect();
-    renderPrePost();
-    setTimeout(() => {
-      try {
-        refreshAll();
-      } catch(e) {
-        document.body.innerHTML = `<div style="padding:40px;font-family:monospace;color:red;font-size:14px;"><b>ERROR en refreshAll():</b><br><pre>${e.stack || e}</pre></div>`;
-        return;
-      }
-      try { renderCohortChart(); } catch(e) { console.error('renderCohortChart:', e); }
-      try { renderBacklogSummary(); } catch(e) { console.error('renderBacklogSummary:', e); }
-      try { renderCohortEntregaChart(); } catch(e) { console.error('renderCohortEntregaChart:', e); }
-      try { renderCancelChart(); } catch(e) { console.error('renderCancelChart:', e); }
-    }, 100);
-  } catch(e) {
-    document.body.innerHTML = `<div style="padding:40px;font-family:monospace;color:red;font-size:14px;"><b>ERROR en boot:</b><br><pre>${e.stack || e}</pre></div>`;
-  }
+  Chart.register(ChartDataLabels);
+  initHubSelect();
+  refreshAll();
+  renderCohortChart();
+  renderBacklogSummary();
+  renderCohortEntregaChart();
+  renderPrePost();
+  renderCancelChart();
+  renderNPSSection();
 });
 </script>
 </body>
