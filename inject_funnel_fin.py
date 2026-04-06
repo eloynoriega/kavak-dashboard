@@ -157,7 +157,8 @@ function renderFunnelFin() {
     if (curr == null || prev == null) return '';
     const d = curr - prev;
     const cls = d >= 0 ? 'delta-up' : 'delta-down';
-    return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp vs mes ant.</span>`;
+    const lbl = gran === 'mensual' ? 'vs mes ant.' : 'vs sem. ant.';
+    return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp ${lbl}</span>`;
   }
 
   // ── Funnel buckets (res / ho / app) — from rawFunnelFin ───────────────
@@ -199,23 +200,61 @@ function renderFunnelFin() {
     return map;
   }
 
-  // ── KPI cards (always MTD vs LMTD) ───────────────────────────────────
-  const mtd      = aggPeriod(rawFunnelFinMTD,  emptyBucket,    addRow);
-  const lmtd     = aggPeriod(rawFunnelFinLMTD, emptyBucket,    addRow);
-  const mtdVta   = aggPeriod(rawFunnelFinMTD,  emptyVtaBucket, addVtaRow);
-  const lmtdVta  = aggPeriod(rawFunnelFinLMTD, emptyVtaBucket, addVtaRow);
+  // ── KPI cards: última semana o mes completo vs anterior ──────────────
+  // (non-cohorted: cada etapa por su propia fecha de evento)
+  let cur, prv, curVta, prvVta, periodLabel;
+
+  if (gran === 'mensual') {
+    // Aggregate rawFunnelFin by YYYY-MM
+    function aggByMonthKey(rows, emptyFn, addFn) {
+      const map = {};
+      rows.forEach(r => {
+        if (hub !== '__MX__' && r.hub !== hub) return;
+        const key = (r.semana || '').slice(0, 7);
+        if (!key) return;
+        if (!map[key]) map[key] = emptyFn();
+        addFn(map[key], r);
+      });
+      return map;
+    }
+    const mMap  = aggByMonthKey(rawFunnelFin,    emptyBucket,    addRow);
+    const mVMap = aggByMonthKey(rawFunnelFinVta, emptyVtaBucket, addVtaRow);
+    const mKeys  = Object.keys(mMap).sort();
+    const mVKeys = Object.keys(mVMap).sort();
+    const lastM  = mKeys[mKeys.length - 1]  || '';
+    const prevM  = mKeys[mKeys.length - 2]  || '';
+    const lastMV = mVKeys[mVKeys.length - 1] || '';
+    const prevMV = mVKeys[mVKeys.length - 2] || '';
+    cur    = mMap[lastM]   || emptyBucket();
+    prv    = mMap[prevM]   || emptyBucket();
+    curVta = mVMap[lastMV] || emptyVtaBucket();
+    prvVta = mVMap[prevMV] || emptyVtaBucket();
+    periodLabel = lastM ? 'Mes: ' + lastM.slice(5) + '/' + lastM.slice(2, 4) : '—';
+  } else {
+    const allSemanas = [...new Set(rawFunnelFin.map(r => r.semana))].sort();
+    const lastWk = allSemanas[allSemanas.length - 1];
+    const prevWk = allSemanas[allSemanas.length - 2];
+    cur = aggPeriod(rawFunnelFin.filter(r => r.semana === lastWk), emptyBucket, addRow);
+    prv = aggPeriod(rawFunnelFin.filter(r => r.semana === prevWk), emptyBucket, addRow);
+    const allSemVta = [...new Set(rawFunnelFinVta.map(r => r.semana))].sort();
+    const lastWkV = allSemVta[allSemVta.length - 1];
+    const prevWkV = allSemVta[allSemVta.length - 2];
+    curVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === lastWkV), emptyVtaBucket, addVtaRow);
+    prvVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === prevWkV), emptyVtaBucket, addVtaRow);
+    periodLabel = lastWk ? 'Sem: ' + lastWk.slice(5).replace('-', '/') : '—';
+  }
 
   const kpiList = [
     { id:'ho',
-      cur: crFn(mtd.ho,  mtd.res),   prv: crFn(lmtd.ho,  lmtd.res),
-      sub: `Sales: ${fmtPct(crFn(mtd.ho_s, mtd.res_s))} · TI: ${fmtPct(crFn(mtd.ho_t, mtd.res_t))}` },
+      cur: crFn(cur.ho,  cur.res),  prv: crFn(prv.ho,  prv.res),
+      sub: `Sales: ${fmtPct(crFn(cur.ho_s, cur.res_s))} · TI: ${fmtPct(crFn(cur.ho_t, cur.res_t))}` },
     { id:'app',
-      cur: crFn(mtd.app, mtd.res),   prv: crFn(lmtd.app, lmtd.res),
-      sub: `Sales: ${fmtPct(crFn(mtd.app_s, mtd.res_s))} · TI: ${fmtPct(crFn(mtd.app_t, mtd.res_t))}` },
+      cur: crFn(cur.app, cur.res),  prv: crFn(prv.app, prv.res),
+      sub: `Sales: ${fmtPct(crFn(cur.app_s, cur.res_s))} · TI: ${fmtPct(crFn(cur.app_t, cur.res_t))}` },
     { id:'vta',
-      cur: crFn(mtdVta.vta,  mtdVta.vta  + mtdVta.can),
-      prv: crFn(lmtdVta.vta, lmtdVta.vta + lmtdVta.can),
-      sub: `Sales: ${fmtPct(crFn(mtdVta.vta_s, mtdVta.vta_s + mtdVta.can_s))} · TI: ${fmtPct(crFn(mtdVta.vta_t, mtdVta.vta_t + mtdVta.can_t))}` },
+      cur: crFn(curVta.vta, curVta.vta + curVta.can),
+      prv: crFn(prvVta.vta, prvVta.vta + prvVta.can),
+      sub: `Sales: ${fmtPct(crFn(curVta.vta_s, curVta.vta_s + curVta.can_s))} · TI: ${fmtPct(crFn(curVta.vta_t, curVta.vta_t + curVta.can_t))}` },
   ];
   kpiList.forEach(k => {
     const setEl = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
@@ -224,9 +263,9 @@ function renderFunnelFin() {
     setEl('kpi-funnel-'+k.id+'-sub',   el => el.textContent = k.sub);
   });
 
-  // Update MTD label
+  // Update period label
   const lbl = document.getElementById('funnel-fin-mtd-label');
-  if (lbl && typeof MTD_LABEL !== 'undefined') lbl.textContent = 'MTD: ' + MTD_LABEL;
+  if (lbl) lbl.textContent = periodLabel;
 
   // ── Build time-series maps ────────────────────────────────────────────
   const timeMap = aggByTime(rawFunnelFin,    'semana', emptyBucket,    addRow);
