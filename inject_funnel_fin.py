@@ -8,8 +8,10 @@ Sección incluye:
   - 3 line charts semanales (Total / Sales / TI) para cada conversión
 """
 import sys, os, json, re
+from datetime import date, timedelta
 SRC  = '/Users/choloynoriega/Desktop/kavak_str_dashboard_v2.html'
 DEST = SRC
+DATA_AS_OF = (date.today() - timedelta(days=1)).isoformat()  # e.g. '2026-04-05'
 
 html = open(SRC, encoding='utf-8').read()
 
@@ -28,7 +30,7 @@ funnel_mtd_json = json.dumps(funnel_data['rawFunnelFinMTD'],  separators=(',',':
 funnel_lmtd_json= json.dumps(funnel_data['rawFunnelFinLMTD'], separators=(',',':'))
 
 # ── 2. Remove existing data + section if re-running ──────────────────────────
-for var in ['rawFunnelFin', 'rawFunnelFinVta', 'rawFunnelFinMTD', 'rawFunnelFinLMTD']:
+for var in ['rawFunnelFin', 'rawFunnelFinVta', 'rawFunnelFinMTD', 'rawFunnelFinLMTD', 'DATA_AS_OF']:
     marker = f'const {var} = '
     while marker in html:
         pos = html.find(marker)
@@ -80,6 +82,7 @@ data_block = (
     f'const rawFunnelFinVta = {funnel_vta_json};\n'
     f'const rawFunnelFinMTD = {funnel_mtd_json};\n'
     f'const rawFunnelFinLMTD = {funnel_lmtd_json};\n'
+    f'const DATA_AS_OF = "{DATA_AS_OF}";\n'
 )
 html = html[:idx_data] + data_block + html[idx_data:]
 print(f"✅ Injected rawFunnelFin ({len(funnel_json)//1024} KB) + FinVta + MTD + LMTD")
@@ -379,6 +382,14 @@ html = wire(html,
     '  renderNPSSection();\n});',
     '  renderFunnelFin();\n  renderNPSSection();\n});',
     'DOMContentLoaded')
+
+# Set data-as-of badge on load
+badge_setter = "  const _daoBadge = document.getElementById('data-as-of-badge'); if (_daoBadge && typeof DATA_AS_OF !== 'undefined') _daoBadge.textContent = '📅 Datos al: ' + DATA_AS_OF;\n"
+dom_marker = '  renderFunnelFin();\n  renderNPSSection();\n});'
+if badge_setter.strip() not in html:
+    html = html.replace(dom_marker,
+        badge_setter + dom_marker, 1)
+    print("✅ Wired data-as-of badge setter")
 
 # ── 7. Write ──────────────────────────────────────────────────────────────────
 with open(DEST, 'w', encoding='utf-8') as f:
