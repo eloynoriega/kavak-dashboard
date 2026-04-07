@@ -606,6 +606,13 @@ function weekLabel(iso) {
   const d = new Date(iso + 'T12:00:00');
   return `${d.getDate()}/${d.getMonth()+1}`;
 }
+function chartLabel(iso) {
+  // In daily mode adds short day-of-week: "Sá 5/4"
+  const DAYS = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+  const d = new Date(iso + 'T12:00:00');
+  if (currentGran === 'diario') return `${DAYS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`;
+  return `${d.getDate()}/${d.getMonth()+1}`;
+}
 function strColor(v, type) {
   if (v == null) return 'orange';
   if (type === 'fin') return v >= 70 ? 'green' : v >= 60 ? 'orange' : 'red';
@@ -665,9 +672,62 @@ function aggByMonth(rows) {
   return Object.values(map).sort((a,b) => a.semana.localeCompare(b.semana));
 }
 
+// ── Daily + current-week helpers (use rawDaily as source) ───────────────────
+// Returns last-7-days rows keyed by fecha (works for both getAggData / getAggDataE)
+function aggByDayE() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d7    = new Date(today); d7.setDate(today.getDate() - 7);
+  const map   = {};
+  rawDaily.forEach(r => {
+    if (currentHub !== '__MX__' && r.hub !== currentHub) return;
+    const d = new Date(r.fecha + 'T12:00:00');
+    if (d < d7 || d >= today) return;
+    if (!map[r.fecha]) map[r.fecha] = {
+      semana: r.fecha,
+      ventas_total:0, ventas_fin:0, ventas_cash:0,
+      cancel_total:0, cancel_fin:0, cancel_cash:0,
+      reservas_total:0, reservas_fin:0, reservas_cash:0,
+      reservas_netas:0, reservas_netas_fin:0, reservas_netas_cash:0
+    };
+    const m = map[r.fecha];
+    m.ventas_total  += r.ventas_total  ||0; m.ventas_fin  += r.ventas_fin  ||0; m.ventas_cash  += r.ventas_cash  ||0;
+    m.cancel_total  += r.cancel_total  ||0; m.cancel_fin  += r.cancel_fin  ||0; m.cancel_cash  += r.cancel_cash  ||0;
+    m.reservas_netas += r.reservas_netas||0; m.reservas_netas_fin += r.reservas_netas_fin||0; m.reservas_netas_cash += r.reservas_netas_cash||0;
+    m.reservas_total += r.reservas_netas||0; m.reservas_fin  += r.reservas_netas_fin||0; m.reservas_cash += r.reservas_netas_cash||0;
+  });
+  return Object.values(map).sort((a,b) => a.semana.localeCompare(b.semana));
+}
+// Returns current partial week as one row (to append to semanal charts)
+function aggCurrentWeekE() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dow   = today.getDay();
+  const monday = new Date(today); monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  const iso   = monday.toISOString().slice(0,10);
+  const zero  = { semana: iso, ventas_total:0, ventas_fin:0, ventas_cash:0, cancel_total:0, cancel_fin:0, cancel_cash:0, reservas_total:0, reservas_fin:0, reservas_cash:0, reservas_netas:0, reservas_netas_fin:0, reservas_netas_cash:0 };
+  const rows  = rawDaily.filter(r => {
+    if (currentHub !== '__MX__' && r.hub !== currentHub) return false;
+    const d = new Date(r.fecha + 'T12:00:00');
+    return d >= monday && d < today;
+  });
+  if (rows.length === 0) return null;
+  return rows.reduce((s, r) => ({
+    semana: iso,
+    ventas_total:  s.ventas_total  + (r.ventas_total  ||0), ventas_fin:  s.ventas_fin  + (r.ventas_fin  ||0), ventas_cash:  s.ventas_cash  + (r.ventas_cash  ||0),
+    cancel_total:  s.cancel_total  + (r.cancel_total  ||0), cancel_fin:  s.cancel_fin  + (r.cancel_fin  ||0), cancel_cash:  s.cancel_cash  + (r.cancel_cash  ||0),
+    reservas_total: s.reservas_total + (r.reservas_netas||0), reservas_fin: s.reservas_fin + (r.reservas_netas_fin||0), reservas_cash: s.reservas_cash + (r.reservas_netas_cash||0),
+    reservas_netas: s.reservas_netas + (r.reservas_netas||0), reservas_netas_fin: s.reservas_netas_fin + (r.reservas_netas_fin||0), reservas_netas_cash: s.reservas_netas_cash + (r.reservas_netas_cash||0),
+  }), zero);
+}
+
 function getAggData() {
+  if (currentGran === 'diario') return aggByDayE();
   const rows = getFilteredA();
-  return currentGran === 'semanal' ? aggByWeek(rows) : aggByMonth(rows);
+  const agg  = currentGran === 'semanal' ? aggByWeek(rows) : aggByMonth(rows);
+  if (currentGran === 'semanal') {
+    const cw = aggCurrentWeekE();
+    if (cw && !agg.find(r => r.semana === cw.semana)) agg.push(cw);
+  }
+  return agg;
 }
 function aggByWeekE(rows) {
   const map = {};
@@ -691,8 +751,14 @@ function aggByMonthE(rows) {
   return Object.values(map).sort((a,b) => a.semana.localeCompare(b.semana));
 }
 function getAggDataE() {
+  if (currentGran === 'diario') return aggByDayE();
   const rows = getFilteredE();
-  return currentGran === 'semanal' ? aggByWeekE(rows) : aggByMonthE(rows);
+  const agg  = currentGran === 'semanal' ? aggByWeekE(rows) : aggByMonthE(rows);
+  if (currentGran === 'semanal') {
+    const cw = aggCurrentWeekE();
+    if (cw && !agg.find(r => r.semana === cw.semana)) agg.push(cw);
+  }
+  return agg;
 }
 
 function aggBByWeek(rows) {
@@ -835,10 +901,17 @@ function renderKPIs() {
   const d7Cur  = _aggD7(_d7start,  _d7today);
   const d7Prev = _aggD7(_d7pstart, _d7start);
 
-  const vd      = isSem ? aggE(_lastE) : isDaily ? d7Cur  : d;
-  const vdPrev  = isSem ? aggE(_prevE) : isDaily ? d7Prev : dl;
-  const vsLabel = isSem ? 'sem. ant.' : isDaily ? '7d ant.' : 'LMTD';
-  const period  = isSem ? weekLabel(_lastE) : isDaily ? _d7label : MTD_LABEL;
+  // D-1: ayer vs mismo día semana pasada (D-8)
+  const _d8day  = new Date(_d7today); _d8day.setDate(_d7today.getDate() - 8);
+  const _d7day  = new Date(_d7today); _d7day.setDate(_d7today.getDate() - 7);
+  const d1Cur   = _aggD7(_d7yest, _d7today);   // sólo ayer
+  const d1Prev  = _aggD7(_d8day,  _d7day);     // sólo D-8 (mismo dow, semana pasada)
+  const _d1label = _fmtD(_d7yest);             // e.g. "5/4"
+
+  const vd      = isSem ? aggE(_lastE) : isDaily ? d1Cur  : d;
+  const vdPrev  = isSem ? aggE(_prevE) : isDaily ? d1Prev : dl;
+  const vsLabel = isSem ? 'sem. ant.' : isDaily ? 'sem. ant.' : 'LMTD';
+  const period  = isSem ? weekLabel(_lastE) : isDaily ? _d1label : MTD_LABEL;
 
   // entregas: semanal → última semana; mensual → rawBacklogMTD; diario → rawDaily 7d
   function mtdEntregas(src) {
@@ -853,8 +926,8 @@ function renderKPIs() {
   const _mtdSrc  = (typeof rawBacklogMTD !== 'undefined')
     ? (rawBacklogMTD[hub] || rawBacklogMTD['__MX__'])
     : null;
-  const _bdDaily     = { brutas: d7Cur.entregas_brutas,  netas: d7Cur.entregas_netas,  kuna: d7Cur.entregas_kuna  };
-  const _bdDailyPrev = { brutas: d7Prev.entregas_brutas, netas: d7Prev.entregas_netas, kuna: d7Prev.entregas_kuna };
+  const _bdDaily     = { brutas: d1Cur.entregas_brutas,  netas: d1Cur.entregas_netas,  kuna: d1Cur.entregas_kuna  };
+  const _bdDailyPrev = { brutas: d1Prev.entregas_brutas, netas: d1Prev.entregas_netas, kuna: d1Prev.entregas_kuna };
   const bd     = isSem ? aggB(_lastB) : isDaily ? _bdDaily     : mtdEntregas(_mtdSrc);
   const bdPrev = isSem ? aggB(_prevB) : isDaily ? _bdDailyPrev : aggB(_prevB);
 
@@ -875,12 +948,12 @@ function renderKPIs() {
   const res  = isSem
     ? { total: _resA.reservas_netas,      fin: _resA.reservas_netas_fin,      cash: _resA.reservas_netas_cash      }
     : isDaily
-      ? { total: d7Cur.reservas_netas,    fin: d7Cur.reservas_netas_fin,      cash: d7Cur.reservas_netas_cash      }
+      ? { total: d1Cur.reservas_netas,    fin: d1Cur.reservas_netas_fin,      cash: d1Cur.reservas_netas_cash      }
       : { total: d.reservas_netas  || d.reservas_total,  fin: d.reservas_netas_fin  || d.reservas_fin,  cash: d.reservas_netas_cash  || d.reservas_cash  };
   const resL = isSem
     ? { total: _resAPrev.reservas_netas,  fin: _resAPrev.reservas_netas_fin,  cash: _resAPrev.reservas_netas_cash  }
     : isDaily
-      ? { total: d7Prev.reservas_netas,   fin: d7Prev.reservas_netas_fin,     cash: d7Prev.reservas_netas_cash     }
+      ? { total: d1Prev.reservas_netas,   fin: d1Prev.reservas_netas_fin,     cash: d1Prev.reservas_netas_cash     }
       : { total: dl.reservas_netas || dl.reservas_total, fin: dl.reservas_netas_fin || dl.reservas_fin, cash: dl.reservas_netas_cash || dl.reservas_cash };
 
   // ── Kuna % ────────────────────────────────────────────────────────────────
@@ -999,7 +1072,7 @@ function renderKPIs() {
   // ── KPI array ─────────────────────────────────────────────────────────────
   const kpis = [
     {
-      label: isSem ? 'Reservas Netas Sem.' : isDaily ? `Reservas Netas ${_d7label}` : 'Reservas Netas MTD',
+      label: isSem ? 'Reservas Netas Sem.' : isDaily ? `Reservas Netas ${_d1label}` : 'Reservas Netas MTD',
       value: fmtN(res.total),
       sub:   `Fin ${fmtN(res.fin)} · Cash ${fmtN(res.cash)}`,
       delta: delta(res.total, resL.total, true),
@@ -1039,7 +1112,7 @@ function renderKPIs() {
       sub:   isSem
         ? `Brutas: ${fmtN(bd.brutas)} · sem. ${_lastB}`
         : isDaily
-          ? `Brutas: ${fmtN(bd.brutas)} · ${_d7label}`
+          ? `Brutas: ${fmtN(bd.brutas)} · ${_d1label}`
           : `Brutas: ${fmtN(bd.brutas)} · ${(_mtdSrc && _mtdSrc['_period'] ? '' : 'MTD')}`,
       delta: delta(bd.netas, bdPrev.netas, true),
       color: '',
@@ -1082,7 +1155,7 @@ function renderKPIs() {
       <div class="kpi-delta">${k.delta}</div>
     </div>`).join('');
   document.getElementById('period-badge').textContent =
-    isSem ? 'Semana: ' + (_lastE || '—') : 'MTD: ' + MTD_LABEL;
+    isSem ? 'Semana: ' + (_lastE || '—') : isDaily ? 'Ayer: ' + _d1label : 'MTD: ' + MTD_LABEL;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1098,7 +1171,7 @@ const PALETTE = ['#0a2540','#00c3a5','#3498db','#e74c3c','#f39c12','#9b59b6','#1
 function renderVolChart() {
   destroyChart('vol');
   const dataE = getAggDataE(); // fecha cierre, estimate_flag aplicado
-  const labels = dataE.map(d => weekLabel(d.semana));
+  const labels = dataE.map(d => chartLabel(d.semana));
   const ctx = document.getElementById('chart-vol').getContext('2d');
   charts['vol'] = new Chart(ctx, {
     data: {
@@ -1132,7 +1205,7 @@ function renderVolChart() {
 function renderSTRChart() {
   destroyChart('str');
   const data = getAggDataE(); // fecha cierre + estimate_flag
-  const labels = data.map(d => weekLabel(d.semana));
+  const labels = data.map(d => chartLabel(d.semana));
   const ctx = document.getElementById('chart-str').getContext('2d');
   charts['str'] = new Chart(ctx, {
     type: 'line',
@@ -1467,7 +1540,7 @@ function renderDetailTable() {
     const mixFin = safeDiv(netFin, netRes)*100;
     const cf = strColor(strFin,'fin'), cc = strColor(strCash,'cash'), ct = strColor(strTotal,'total');
     return `<tr>
-      <td>${d.semana}</td>
+      <td>${chartLabel(d.semana)}</td>
       <td>${fmtN(netRes)}</td>
       <td>${fmtN(netFin)}</td>
       <td>${fmtN(netCash)}</td>
@@ -1482,7 +1555,7 @@ function renderDetailTable() {
   document.getElementById('detail-table-wrap').innerHTML = `
     <table>
       <thead><tr>
-        <th>Período</th><th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
+        <th>${currentGran === 'diario' ? 'Fecha' : 'Período'}</th><th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
         <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
       </tr></thead>
       <tbody>${rows.join('')}</tbody>
