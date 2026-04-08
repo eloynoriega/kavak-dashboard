@@ -940,14 +940,23 @@ function renderKPIs() {
       entregas_fin: s.entregas_fin + (r.entregas_fin||0), entregas_kuna: s.entregas_kuna + (r.entregas_kuna||0),
     }), Object.assign({}, _d7zero));
   const _cwHas = _cwData.ventas_total > 0 || _cwData.cancel_total > 0 || _cwData.reservas_netas > 0;
-  // WTD label: e.g. "6/4–6/4 WTD"
+  // WTD label: e.g. "6/4–7/4 WTD"
   const _cwLabel = _fmtD(_cwMon) + (_cwYest >= _cwMon ? '–' + _fmtD(_cwYest) : '') + ' WTD';
 
+  // LWTD = misma ventana WTD pero 7 días antes (mismos días de la semana pasada)
+  const _lwtdMon  = new Date(_cwMon);  _lwtdMon.setDate(_cwMon.getDate() - 7);
+  const _lwtdTod  = new Date(_cwTod);  _lwtdTod.setDate(_cwTod.getDate() - 7);
+  const _lwtdYest = new Date(_cwYest); _lwtdYest.setDate(_cwYest.getDate() - 7);
+  const _lwtdData = _aggD7(_lwtdMon, _lwtdTod);
+  const _lwtdLabel = _fmtD(_lwtdMon) + (_lwtdYest >= _lwtdMon ? '–' + _fmtD(_lwtdYest) : '') + ' LWTD';
+
   // ── Fuente de datos según granularidad ─────────────────────────────────────
-  // semanal: si hay datos WTD → semana en curso; si no → última semana cerrada
-  const vd     = isSem ? (_cwHas ? _cwData    : aggE(_lastE)) : isDaily ? d1Cur  : d;
-  const vdPrev = isSem ? (_cwHas ? aggE(_lastE) : aggE(_prevE)) : isDaily ? d1Prev : dl;
-  const vsLabel = isSem ? (_cwHas ? 'últ. sem.' : 'sem. ant.') : isDaily ? 'sem. ant.' : 'LMTD';
+  // diario  → ayer vs D-8 (mismo DOW semana pasada)
+  // semanal → WTD vs LWTD (misma ventana de días, semana anterior)
+  // mensual → MTD vs LMTD
+  const vd     = isSem ? (_cwHas ? _cwData   : aggE(_lastE)) : isDaily ? d1Cur  : d;
+  const vdPrev = isSem ? (_cwHas ? _lwtdData : aggE(_prevE)) : isDaily ? d1Prev : dl;
+  const vsLabel = isSem ? (_cwHas ? 'LWTD'   : 'sem. ant.') : isDaily ? 'sem. ant.' : 'LMTD';
   const period  = isSem ? (_cwHas ? _cwLabel : weekLabel(_lastE)) : isDaily ? _d1label : MTD_LABEL;
 
   // entregas: semanal → última semana; mensual → rawBacklogMTD; diario → rawDaily 7d
@@ -965,9 +974,10 @@ function renderKPIs() {
     : null;
   const _bdDaily     = { brutas: d1Cur.entregas_brutas,  netas: d1Cur.entregas_netas,  kuna: d1Cur.entregas_kuna  };
   const _bdDailyPrev = { brutas: d1Prev.entregas_brutas, netas: d1Prev.entregas_netas, kuna: d1Prev.entregas_kuna };
-  const _bdWTD       = { brutas: _cwData.entregas_brutas, netas: _cwData.entregas_netas, kuna: _cwData.entregas_kuna };
-  const bd     = isSem ? (_cwHas ? _bdWTD    : aggB(_lastB)) : isDaily ? _bdDaily     : mtdEntregas(_mtdSrc);
-  const bdPrev = isSem ? (_cwHas ? aggB(_lastB) : aggB(_prevB)) : isDaily ? _bdDailyPrev : aggB(_prevB);
+  const _bdWTD       = { brutas: _cwData.entregas_brutas,   netas: _cwData.entregas_netas,   kuna: _cwData.entregas_kuna   };
+  const _bdLWTD      = { brutas: _lwtdData.entregas_brutas, netas: _lwtdData.entregas_netas, kuna: _lwtdData.entregas_kuna };
+  const bd     = isSem ? (_cwHas ? _bdWTD  : aggB(_lastB)) : isDaily ? _bdDaily     : mtdEntregas(_mtdSrc);
+  const bdPrev = isSem ? (_cwHas ? _bdLWTD : aggB(_prevB)) : isDaily ? _bdDailyPrev : aggB(_prevB);
 
   // ── STR ───────────────────────────────────────────────────────────────────
   function strC(o, t) {
@@ -992,8 +1002,8 @@ function renderKPIs() {
       : { total: d.reservas_netas  || d.reservas_total,  fin: d.reservas_netas_fin  || d.reservas_fin,  cash: d.reservas_netas_cash  || d.reservas_cash  };
   const resL = isSem
     ? (_cwHas
-      ? { total: _resA.reservas_netas,      fin: _resA.reservas_netas_fin,      cash: _resA.reservas_netas_cash      }
-      : { total: _resAPrev.reservas_netas,  fin: _resAPrev.reservas_netas_fin,  cash: _resAPrev.reservas_netas_cash  })
+      ? { total: _lwtdData.reservas_netas, fin: _lwtdData.reservas_netas_fin, cash: _lwtdData.reservas_netas_cash }
+      : { total: _resAPrev.reservas_netas, fin: _resAPrev.reservas_netas_fin,  cash: _resAPrev.reservas_netas_cash })
     : isDaily
       ? { total: d1Prev.reservas_netas,   fin: d1Prev.reservas_netas_fin,     cash: d1Prev.reservas_netas_cash     }
       : { total: dl.reservas_netas || dl.reservas_total, fin: dl.reservas_netas_fin || dl.reservas_fin, cash: dl.reservas_netas_cash || dl.reservas_cash };
