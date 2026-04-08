@@ -6,6 +6,7 @@
 # ══════════════════════════════════════════════════════════════
 
 set -e  # para si falla algo
+FETCH_ERRORS=0
 
 DIR="/Users/choloynoriega/Documents/Kavak Claude V1"
 HTML_SRC="/Users/choloynoriega/Desktop/kavak_str_dashboard_v2.html"
@@ -25,7 +26,7 @@ run() {
   python3 "$DIR/$2" >> "$LOG" 2>&1 && echo "  ✅ Listo" || { echo "  ❌ Error en $2 — ver $LOG"; exit 1; }
 }
 
-# ── 1. Fetch datos (todos en paralelo) ────────────────────────────────────────
+# ── 1. Fetch datos (paralelo, dim_str al final para evitar cancelación) ──────
 echo "── Fetching datos desde Redshift ──"
 python3 "$DIR/fetch_backlog_summary.py"  >> "$LOG" 2>&1 & PID1=$!
 python3 "$DIR/fetch_sla_drilldown.py"   >> "$LOG" 2>&1 & PID2=$!
@@ -34,20 +35,26 @@ python3 "$DIR/fetch_cohort_entrega.py"  >> "$LOG" 2>&1 & PID4=$!
 python3 "$DIR/fetch_cancel_motivos.py"  >> "$LOG" 2>&1 & PID5=$!
 python3 "$DIR/fetch_sla_cierre.py"      >> "$LOG" 2>&1 & PID6=$!
 python3 "$DIR/fetch_str_tradein.py"     >> "$LOG" 2>&1 & PID7=$!
-python3 "$DIR/fetch_dim_str_v2.py"      >> "$LOG" 2>&1 & PID8=$!
-python3 "$DIR/fetch_sla_delivery.py"    >> "$LOG" 2>&1 & PID9=$!
-python3 "$DIR/fetch_str_kpis.py"        >> "$LOG" 2>&1 & PID10=$!
-python3 "$DIR/fetch_funnel_fin.py"      >> "$LOG" 2>&1 & PID11=$!
+python3 "$DIR/fetch_sla_delivery.py"    >> "$LOG" 2>&1 & PID8=$!
+python3 "$DIR/fetch_str_kpis.py"        >> "$LOG" 2>&1 & PID9=$!
+python3 "$DIR/fetch_funnel_fin.py"      >> "$LOG" 2>&1 & PID10=$!
 
-# NPS con timeout de 90s para que no bloquee el pipeline
-( timeout 90 python3 "$DIR/fetch_nps.py" >> "$LOG" 2>&1 && echo "  ✅ NPS OK" ) \
-  || echo "  ⚠️  NPS: timeout o error — se salta, datos anteriores se mantienen" >> "$LOG"
+# NPS con timeout de 90s
+( timeout 90 python3 "$DIR/fetch_nps.py" >> "$LOG" 2>&1 ) \
+  || echo "  ⚠️  NPS: timeout/error — datos anteriores se mantienen" >> "$LOG"
 
-# Esperar fetches principales (NPS ya no bloquea)
-for PID in $PID1 $PID2 $PID3 $PID4 $PID5 $PID6 $PID7 $PID8 $PID9 $PID10 $PID11; do
-  wait $PID || { echo "❌ Un fetch falló — ver $LOG"; exit 1; }
+# Esperar fetches paralelos — fallos individuales no matan el script
+for PID in $PID1 $PID2 $PID3 $PID4 $PID5 $PID6 $PID7 $PID8 $PID9 $PID10; do
+  wait $PID || { echo "  ⚠️  fetch $PID falló — ver $LOG" ; FETCH_ERRORS=$((FETCH_ERRORS+1)); }
 done
-echo "  ✅ Todos los fetches completados"
+
+# dim_str solo (query pesada de aging — corre sin competencia)
+echo "▶ fetch_dim_str_v2 (aging query — corre solo)..."
+python3 "$DIR/fetch_dim_str_v2.py" >> "$LOG" 2>&1 \
+  && echo "  ✅ dim_str OK" \
+  || { echo "  ⚠️  dim_str falló — ver $LOG"; FETCH_ERRORS=$((FETCH_ERRORS+1)); }
+
+echo "  ✅ Fetches completados ($FETCH_ERRORS errores)"
 echo ""
 
 # ── 2. Inyectar datos al HTML (orden importa) ─────────────────────────────────
