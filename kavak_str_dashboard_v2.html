@@ -3092,15 +3092,14 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPrePost();
   renderCancelChart();
   renderNPSSection();
-  // ── "Datos al:" badge — último día disponible derivado de rawA_w ──────
+  // ── "Datos al:" badge — último día disponible en rawDaily ───────────
   (function() {
-    const lastSem = rawA_w.reduce((mx, r) => r.semana > mx ? r.semana : mx, '');
-    if (lastSem) {
-      const d = new Date(lastSem + 'T12:00:00');
-      d.setDate(d.getDate() + 6);  // fin de semana (lunes inicio → domingo fin)
-      const dao = d.toISOString().slice(0, 10);
-      const badge = document.getElementById('data-as-of-badge');
-      if (badge) badge.textContent = '📅 Datos al: ' + dao;
+    const lastFecha = rawDaily.filter(r => r.hub === '__MX__').reduce((mx, r) => r.fecha > mx ? r.fecha : mx, '');
+    const badge = document.getElementById('data-as-of-badge');
+    if (badge && lastFecha) {
+      const [y,m,d] = lastFecha.split('-');
+      const MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      badge.textContent = '📅 Datos al: ' + parseInt(d) + ' ' + MES[parseInt(m)-1] + ' ' + y;
     }
   })();
   renderFunnelFin();
