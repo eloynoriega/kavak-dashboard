@@ -6,6 +6,7 @@
 <title>Performance Sales MX</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -31,6 +32,9 @@
   .logo-area p { font-size: 12px; opacity: .65; margin-top: 2px; }
   #pdf-btn { background: var(--teal); color: var(--navy); border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: opacity .2s; white-space: nowrap; }
   #pdf-btn:hover { opacity: .85; }
+  #ppt-btn { background: #fff; color: var(--navy); border: 2px solid rgba(255,255,255,0.4); padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: opacity .2s; white-space: nowrap; }
+  #ppt-btn:hover { opacity: .85; }
+  #ppt-btn.loading { opacity: .6; cursor: wait; }
 
   /* CONTROLS */
   .controls { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
@@ -175,7 +179,10 @@
     <h1>Performance <span>Sales MX</span></h1>
     <p>Kavak MX · 2026</p>
   </div>
-  <button id="pdf-btn" onclick="openPdfModal()">&#128202; Executive Summary PDF</button>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button id="pdf-btn" onclick="openPdfModal()">&#128202; Executive Summary PDF</button>
+    <button id="ppt-btn" onclick="generarPPT(this)">&#127775; Generar PPT</button>
+  </div>
 </header>
 
 <!-- CONTROLS -->
@@ -3099,6 +3106,346 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFunnelFin();
   renderNPSSection();
 });
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// GENERADOR PPT — 1 click → descarga Kavak_Weekly_PPT_YYYY-MM-DD.pptx
+// ═══════════════════════════════════════════════════════════════════
+async function generarPPT(btn) {
+  if (typeof PptxGenJS === 'undefined') { alert('Librería PPT cargando, intenta en unos segundos…'); return; }
+  if (btn) { btn.classList.add('loading'); btn.textContent = '⏳ Generando…'; }
+
+  try {
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_WIDE'; // 13.33" × 7.5"
+
+    // ── Paleta ────────────────────────────────────────────────────
+    const NAVY  = '0a2540', TEAL  = '00c2a8', WHITE = 'FFFFFF';
+    const GREEN = '27ae60', AMBER = 'f39c12', RED   = 'e74c3c';
+    const LIGHT = 'f8f9fb', LGRAY = 'dde3ea', MGRAY = '8899aa';
+    const DTEXT = '1a2332', STEXT = '3a4a5a';
+
+    // ── Helpers ───────────────────────────────────────────────────
+    const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+    const num = v => v == null ? '—' : Math.round(v).toLocaleString('es-MX');
+    const strFn = (v, c) => (v != null && c > 0) ? v / c : null;
+    const crFn  = (n, d) => d > 0 ? n / d : null;
+    const dlt   = (a, b) => (a != null && b != null) ? a - b : null;
+    function fmtD(d, isPct) {
+      if (d == null) return '—';
+      const s = isPct ? (Math.abs(d*100)).toFixed(1)+'pp' : Math.abs(Math.round(d)).toLocaleString('es-MX');
+      return (d >= 0 ? '+' : '−') + s;
+    }
+    const sem = (v, g, y) => v == null ? AMBER : v >= g ? GREEN : v >= y ? AMBER : RED;
+
+    // ── Fechas ────────────────────────────────────────────────────
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dow   = today.getDay();
+    const cwMon = new Date(today); cwMon.setDate(today.getDate() - (dow===0?6:dow-1));
+    const yest  = new Date(today); yest.setDate(today.getDate()-1);
+    const lwMon = new Date(cwMon); lwMon.setDate(cwMon.getDate()-7);
+    const lwYest= new Date(yest);  lwYest.setDate(yest.getDate()-7);
+    const iso   = d => d.toISOString().slice(0,10);
+    const MES   = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const dlbl  = `${yest.getDate()} ${MES[yest.getMonth()]} ${yest.getFullYear()}`;
+    const wtdLbl= `${cwMon.getDate()}/${cwMon.getMonth()+1}–${yest.getDate()}/${yest.getMonth()+1}`;
+    const lwLbl = `${lwMon.getDate()}/${lwMon.getMonth()+1}–${lwYest.getDate()}/${lwYest.getMonth()+1}`;
+    const kpiMon= iso(cwMon);
+
+    // ── rawDaily → sumas WTD / LWTD ──────────────────────────────
+    function sumD(from, to) {
+      const r = {vt:0,vf:0,vc:0,ct:0,cf:0,cc:0,rn:0,rf:0,rc:0,eb:0,en:0};
+      rawDaily.forEach(d => {
+        if (d.hub !== '__MX__' || d.fecha < iso(from) || d.fecha > iso(to)) return;
+        r.vt+=d.ventas_total||0; r.vf+=d.ventas_fin||0;    r.vc+=d.ventas_cash||0;
+        r.ct+=d.cancel_total||0; r.cf+=d.cancel_fin||0;    r.cc+=d.cancel_cash||0;
+        r.rn+=d.reservas_netas||0; r.rf+=d.reservas_netas_fin||0; r.rc+=d.reservas_netas_cash||0;
+        r.eb+=d.entregas_brutas||0; r.en+=d.entregas_netas||0;
+      });
+      return r;
+    }
+    const wtd  = sumD(cwMon, yest);
+    const lwtd = sumD(lwMon, lwYest);
+
+    const sWTD  = {t:strFn(wtd.vt,wtd.vt+wtd.ct),   f:strFn(wtd.vf,wtd.vf+wtd.cf),   c:strFn(wtd.vc,wtd.vc+wtd.cc)};
+    const sLWT  = {t:strFn(lwtd.vt,lwtd.vt+lwtd.ct), f:strFn(lwtd.vf,lwtd.vf+lwtd.cf), c:strFn(lwtd.vc,lwtd.vc+lwtd.cc)};
+
+    // ── rawMTD / rawLMTD ──────────────────────────────────────────
+    const mMTD  = rawMTD['__MX__']  || {};
+    const mLMTD = rawLMTD['__MX__'] || {};
+    const sMTD  = {t:strFn(mMTD.ventas_total, mMTD.ventas_total+mMTD.cancel_total), f:strFn(mMTD.ventas_fin, mMTD.ventas_fin+mMTD.cancel_fin), c:strFn(mMTD.ventas_cash, mMTD.ventas_cash+mMTD.cancel_cash)};
+    const sLMTD = {t:strFn(mLMTD.ventas_total,mLMTD.ventas_total+mLMTD.cancel_total),f:strFn(mLMTD.ventas_fin,mLMTD.ventas_fin+mLMTD.cancel_fin),c:strFn(mLMTD.ventas_cash,mLMTD.ventas_cash+mLMTD.cancel_cash)};
+
+    // ── Funnel — semanas cerradas ─────────────────────────────────
+    const closedW = [...new Set(rawFunnelFin.map(r=>r.semana))].sort().filter(s=>s<kpiMon);
+    const lastW   = closedW[closedW.length-1]||'';
+    const prevW   = closedW[closedW.length-2]||'';
+    function aggFW(sem) {
+      const b={ho:0,cnh:0,app:0,cna:0};
+      rawFunnelFin.filter(r=>r.semana===sem).forEach(r=>{b.ho+=r.ho_total||0;b.cnh+=r.can_no_ho_total||0;b.app+=r.app_total||0;b.cna+=r.can_no_app_total||0;});
+      return b;
+    }
+    function aggFP(rows) {
+      const b={ho:0,cnh:0,app:0,cna:0};
+      (rows||[]).forEach(r=>{b.ho+=r.ho_total||0;b.cnh+=r.can_no_ho_total||0;b.app+=r.app_total||0;b.cna+=r.can_no_app_total||0;});
+      return b;
+    }
+    const fCur = aggFW(lastW), fPrv = aggFW(prevW);
+    const crHO_W  = crFn(fCur.ho, fCur.ho+fCur.cnh), crApp_W  = crFn(fCur.app, fCur.app+fCur.cna);
+    const crHO_PW = crFn(fPrv.ho, fPrv.ho+fPrv.cnh), crApp_PW = crFn(fPrv.app, fPrv.app+fPrv.cna);
+    const fMTD    = aggFP(typeof rawFunnelFinMTD  !=='undefined' ? rawFunnelFinMTD  : []);
+    const fLMTD_d = aggFP(typeof rawFunnelFinLMTD !=='undefined' ? rawFunnelFinLMTD : []);
+    const crHO_M  = crFn(fMTD.ho, fMTD.ho+fMTD.cnh),     crApp_M  = crFn(fMTD.app, fMTD.app+fMTD.cna);
+    const crHO_LM = crFn(fLMTD_d.ho,fLMTD_d.ho+fLMTD_d.cnh), crApp_LM = crFn(fLMTD_d.app,fLMTD_d.app+fLMTD_d.cna);
+
+    // ── STR trend (last 8 closed weeks) ──────────────────────────
+    function aggEW(s) {
+      const b={vt:0,vf:0,vc:0,ct:0,cf:0,cc:0};
+      rawE_w.filter(r=>r.semana===s).forEach(r=>{b.vt+=r.ventas_total||0;b.vf+=r.ventas_fin||0;b.vc+=r.ventas_cash||0;b.ct+=r.cancel_total||0;b.cf+=r.cancel_fin||0;b.cc+=r.cancel_cash||0;});
+      return b;
+    }
+    const last8E = [...new Set(rawE_w.map(r=>r.semana))].sort().filter(s=>s<kpiMon).slice(-8);
+    const strTrend = last8E.map(s=>{const b=aggEW(s);return{lbl:s.slice(5).replace('-','/'),t:strFn(b.vt,b.vt+b.ct),f:strFn(b.vf,b.vf+b.cf),c:strFn(b.vc,b.vc+b.cc)};});
+
+    // ── Funnel trend (last 8 closed weeks) ───────────────────────
+    const last8F   = [...new Set(rawFunnelFin.map(r=>r.semana))].sort().filter(s=>s<kpiMon).slice(-8);
+    const funTrend = last8F.map(s=>{const b=aggFW(s);return{lbl:s.slice(5).replace('-','/'),ho:crFn(b.ho,b.ho+b.cnh),app:crFn(b.app,b.app+b.cna)};});
+
+    // ── Hub STR ranking ───────────────────────────────────────────
+    const shortH = h => h.replace(/^CDMX - /,'').replace(/^MTY - /,'MTY ').replace(/^GDL - /,'GDL ').replace(/^QRO - /,'QRO ').replace(/^WH - /,'WH ').slice(0,24);
+    const hubSTR = Object.entries(rawMTD)
+      .filter(([h])=>h!=='__MX__')
+      .map(([h,d])=>{const lmD=rawLMTD[h]||{};return{hub:h,str:strFn(d.ventas_total,d.ventas_total+d.cancel_total),strLM:strFn(lmD.ventas_total,lmD.ventas_total+lmD.cancel_total),vtas:d.ventas_total||0};})
+      .filter(h=>h.str!=null&&h.vtas>=5)
+      .sort((a,b)=>b.str-a.str);
+    const top3 = hubSTR.slice(0,3);
+    const bot3 = hubSTR.slice(-3).reverse(); // worst first
+
+    // ── Slide header helper ───────────────────────────────────────
+    function addHdr(sl, title, sub) {
+      sl.addShape(pres.shapes.RECTANGLE, {x:0, y:0, w:13.33, h:0.72, fill:{color:NAVY}, line:{color:NAVY}});
+      sl.addText([{text:'» ',options:{color:TEAL,bold:true,fontSize:18}},{text:title,options:{color:WHITE,bold:true,fontSize:18}}],
+        {x:0.3,y:0,w:10.5,h:0.72,valign:'middle',margin:0});
+      sl.addText(dlbl,{x:10.6,y:0,w:2.5,h:0.72,align:'right',valign:'middle',color:MGRAY,fontSize:9,margin:0});
+      if (sub) sl.addText(sub,{x:0.3,y:0.76,w:12.7,h:0.24,fontSize:9,color:MGRAY,italic:true,margin:0});
+    }
+
+    // ── Table row helper ──────────────────────────────────────────
+    function tRow(label, wV, lwV, mV, lmV, isPct, gThresh, isBold) {
+      const fill = isBold ? {fill:{color:'ecf0f5'}} : {};
+      const dc = (d, g) => ({text:fmtD(d,isPct), options:{...fill, color:d==null?MGRAY:d>=g?GREEN:d>=0?AMBER:RED, align:'center', bold:d!=null, fontSize:9}});
+      return [
+        {text:label, options:{...fill, color:DTEXT, align:'left', bold:!!isBold, fontSize:9}},
+        {text:isPct?pct(wV):num(wV),   options:{...fill, color:DTEXT, align:'center', fontSize:9}},
+        {text:isPct?pct(lwV):num(lwV), options:{...fill, color:MGRAY, align:'center', fontSize:9}},
+        dc(dlt(wV,lwV), gThresh),
+        {text:isPct?pct(mV):num(mV),   options:{...fill, color:DTEXT, align:'center', fontSize:9}},
+        dc(dlt(mV,lmV), gThresh),
+      ];
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // SLIDE 1 — Executive Summary
+    // ═══════════════════════════════════════════════════════════
+    const s1 = pres.addSlide();
+    s1.background = {color:LIGHT};
+    addHdr(s1, 'Sales | Executive Summary', `WTD ${wtdLbl}  vs LWTD ${lwLbl}  ·  MTD ${MES[today.getMonth()]} vs LMTD`);
+
+    // Left bullets (auto-generated)
+    const entD = dlt(wtd.en, lwtd.en);
+    const bData = [
+      {title:'Reservas Netas', body:`${fmtD(dlt(wtd.rn,lwtd.rn),false)} WoW · ${num(wtd.rn)} WTD vs ${num(lwtd.rn)} LWTD. Fin ${num(wtd.rf)} · Cash ${num(wtd.rc)}`, col:MGRAY},
+      {title:'STR Total',      body:`${pct(sWTD.t)} WTD ${fmtD(dlt(sWTD.t,sLWT.t),true)} vs LWTD (target 75%). MTD: ${pct(sMTD.t)} ${fmtD(dlt(sMTD.t,sLMTD.t),true)} vs LM`, col:sem(sWTD.t,0.75,0.70)},
+      {title:'STR Financing',  body:`${pct(sWTD.f)} WTD ${fmtD(dlt(sWTD.f,sLWT.f),true)} vs LWTD (target 69%). MTD: ${pct(sMTD.f)} ${fmtD(dlt(sMTD.f,sLMTD.f),true)} vs LM`, col:sem(sWTD.f,0.69,0.64)},
+      {title:'Funnel HO & App',body:`HO: ${pct(crHO_W)} WTD · App: ${pct(crApp_W)} WTD. MTD: HO ${pct(crHO_M)} · App ${pct(crApp_M)}`, col:sem(crHO_W,0.80,0.75)},
+      {title:'Entregas Netas', body:`${num(wtd.en)} WTD ${fmtD(entD,false)} WoW. Brutas: ${num(wtd.eb)}. MTD ventas: ${num(mMTD.ventas_total)} vs ${num(mLMTD.ventas_total)} LM`, col:sem(entD>=0?1:entD>=-20?0.5:0,0.9,0.4)},
+    ];
+    bData.forEach((b,i) => {
+      const y = 1.15 + i * 0.9;
+      s1.addShape(pres.shapes.RECTANGLE, {x:0.3, y, w:0.06, h:0.75, fill:{color:b.col}, line:{color:b.col}});
+      s1.addText([{text:b.title+': ',options:{bold:true,color:NAVY,fontSize:10}},{text:b.body,options:{color:STEXT,fontSize:10}}],
+        {x:0.48, y:y+0.03, w:4.05, h:0.72, wrap:true, margin:0});
+    });
+
+    // Right table
+    const tHdr = [{text:'Métrica',options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'left'}},
+                   {text:'WTD',   options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'center'}},
+                   {text:'LWTD',  options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'center'}},
+                   {text:'WoW',   options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'center'}},
+                   {text:'MTD',   options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'center'}},
+                   {text:'Vs LM', options:{fill:{color:NAVY},color:WHITE,bold:true,fontSize:9,align:'center'}}];
+    const tRows = [
+      tHdr,
+      tRow('Reservas Netas',    wtd.rn,  lwtd.rn,  mMTD.reservas_netas,      mLMTD.reservas_netas,      false, 1,    true),
+      tRow('  · Financing',     wtd.rf,  lwtd.rf,  mMTD.reservas_netas_fin,  mLMTD.reservas_netas_fin,  false, 1,    false),
+      tRow('  · Cash',          wtd.rc,  lwtd.rc,  mMTD.reservas_netas_cash, mLMTD.reservas_netas_cash, false, 1,    false),
+      tRow('STR Total',         sWTD.t,  sLWT.t,   sMTD.t,  sLMTD.t,  true, 0.001, true),
+      tRow('  · Financing',     sWTD.f,  sLWT.f,   sMTD.f,  sLMTD.f,  true, 0.001, false),
+      tRow('  · Cash',          sWTD.c,  sLWT.c,   sMTD.c,  sLMTD.c,  true, 0.001, false),
+      tRow('Entregas Netas',    wtd.en,  lwtd.en,  mMTD.ventas_total, mLMTD.ventas_total, false, 1, true),
+      tRow('CR Handoff',        crHO_W,  crHO_PW,  crHO_M,  crHO_LM,  true, 0.001, true),
+      tRow('CR Aprobación',     crApp_W, crApp_PW, crApp_M, crApp_LM, true, 0.001, false),
+    ];
+    s1.addTable(tRows, {x:4.75, y:1.1, w:8.3, colW:[2.3,1.05,1.05,0.95,1.05,0.95], border:{pt:0.5,color:LGRAY}, autoPage:false});
+    s1.addShape(pres.shapes.LINE, {x:4.65, y:1.1, w:0, h:6.2, line:{color:LGRAY,width:0.5}});
+
+    // ═══════════════════════════════════════════════════════════
+    // SLIDE 2 — STR & Funnel Trend
+    // ═══════════════════════════════════════════════════════════
+    const s2 = pres.addSlide();
+    s2.background = {color:LIGHT};
+    addHdr(s2, 'STR & Funnel Financing | Tendencia Semanal', `Últimas ${last8E.length} semanas cerradas · WTD ${wtdLbl}`);
+
+    // KPI callout cards
+    const kpis2 = [
+      {lbl:'STR Financing MTD',  val:pct(sMTD.f),  d:fmtD(dlt(sMTD.f,sLMTD.f),true), col:sem(sMTD.f,0.69,0.64)},
+      {lbl:'CR Handoff WTD',     val:pct(crHO_W),  d:fmtD(dlt(crHO_W,crHO_PW),true),  col:sem(crHO_W,0.80,0.75)},
+      {lbl:'CR Aprobación WTD',  val:pct(crApp_W), d:fmtD(dlt(crApp_W,crApp_PW),true), col:sem(crApp_W,0.75,0.70)},
+    ];
+    kpis2.forEach((k,i) => {
+      const x = 0.3 + i*4.35;
+      s2.addShape(pres.shapes.RECTANGLE, {x, y:1.07, w:4.1, h:0.9, fill:{color:WHITE}, line:{color:LGRAY,pt:1}});
+      s2.addShape(pres.shapes.RECTANGLE, {x, y:1.07, w:0.07, h:0.9, fill:{color:k.col}, line:{color:k.col}});
+      s2.addText(k.lbl, {x:x+0.15, y:1.1,  w:3.7, h:0.2,  fontSize:8,  color:MGRAY, margin:0});
+      s2.addText(k.val, {x:x+0.15, y:1.28, w:2.2, h:0.46, fontSize:26, bold:true, color:NAVY, margin:0});
+      s2.addText(k.d+' vs ant.', {x:x+2.3, y:1.48, w:1.7, h:0.28, fontSize:9, color:k.d.startsWith('+')?GREEN:RED, align:'right', margin:0});
+    });
+
+    // STR trend chart (left)
+    s2.addChart(pres.charts.LINE, [
+      {name:'STR Total', labels:strTrend.map(r=>r.lbl), values:strTrend.map(r=>r.t?+(r.t*100).toFixed(1):null)},
+      {name:'STR Fin',   labels:strTrend.map(r=>r.lbl), values:strTrend.map(r=>r.f?+(r.f*100).toFixed(1):null)},
+      {name:'STR Cash',  labels:strTrend.map(r=>r.lbl), values:strTrend.map(r=>r.c?+(r.c*100).toFixed(1):null)},
+    ], {x:0.3,y:2.1,w:6.35,h:5.1, chartColors:['1a3a5c','2980b9','27ae60'],
+        chartArea:{fill:{color:WHITE}}, catAxisLabelColor:MGRAY, valAxisLabelColor:MGRAY,
+        catAxisLabelFontSize:8, valAxisLabelFontSize:8,
+        valGridLine:{color:'e8edf3',size:0.5}, catGridLine:{style:'none'},
+        lineSize:2.5, lineSmooth:true, showLegend:true, legendPos:'b', legendFontSize:9,
+        showTitle:true, title:'STR WoW Trend', titleFontSize:11, titleColor:NAVY, titleBold:true,
+        valAxisMinVal:50, valAxisMaxVal:100});
+
+    // Funnel trend chart (right)
+    s2.addChart(pres.charts.LINE, [
+      {name:'CR Handoff',    labels:funTrend.map(r=>r.lbl), values:funTrend.map(r=>r.ho?+(r.ho*100).toFixed(1):null)},
+      {name:'CR Aprobación', labels:funTrend.map(r=>r.lbl), values:funTrend.map(r=>r.app?+(r.app*100).toFixed(1):null)},
+    ], {x:6.85,y:2.1,w:6.2,h:5.1, chartColors:['1a3a5c','e67e22'],
+        chartArea:{fill:{color:WHITE}}, catAxisLabelColor:MGRAY, valAxisLabelColor:MGRAY,
+        catAxisLabelFontSize:8, valAxisLabelFontSize:8,
+        valGridLine:{color:'e8edf3',size:0.5}, catGridLine:{style:'none'},
+        lineSize:2.5, lineSmooth:true, showLegend:true, legendPos:'b', legendFontSize:9,
+        showTitle:true, title:'Funnel Financing CR', titleFontSize:11, titleColor:NAVY, titleBold:true,
+        valAxisMinVal:60, valAxisMaxVal:100});
+
+    // ═══════════════════════════════════════════════════════════
+    // SLIDE 3 — Top/Bottom 3 Hubs
+    // ═══════════════════════════════════════════════════════════
+    const s3 = pres.addSlide();
+    s3.background = {color:LIGHT};
+    addHdr(s3, 'Hub Performance | MTD', 'STR por hub vs mes anterior — mínimo 5 ventas MTD');
+
+    // Section headers
+    s3.addShape(pres.shapes.RECTANGLE, {x:0.3,y:1.1,w:6.0,h:0.38,fill:{color:'e8f5e9'},line:{color:'c8e6c9',pt:0.5}});
+    s3.addText('🏆  TOP 3 — Mayor STR MTD', {x:0.35,y:1.1,w:5.9,h:0.38,fontSize:10,bold:true,color:'1b5e20',valign:'middle',margin:0});
+    s3.addShape(pres.shapes.RECTANGLE, {x:7.0,y:1.1,w:6.0,h:0.38,fill:{color:'fce4e4'},line:{color:'ffcdd2',pt:0.5}});
+    s3.addText('⚠️  BOTTOM 3 — Menor STR MTD', {x:7.05,y:1.1,w:5.9,h:0.38,fontSize:10,bold:true,color:'b71c1c',valign:'middle',margin:0});
+
+    // Top 3
+    top3.forEach((h,i) => {
+      const y = 1.65 + i*1.85;
+      const bw = Math.min(5.5, Math.max(0.3, (h.str||0)*6.0));
+      const d  = dlt(h.str, h.strLM);
+      s3.addText(shortH(h.hub), {x:0.3,y,w:5.8,h:0.28,fontSize:11,bold:true,color:NAVY,margin:0});
+      s3.addText(`${pct(h.str)}   ${fmtD(d,true)} vs LM   ${num(h.vtas)} ventas MTD`, {x:0.3,y:y+0.3,w:5.8,h:0.22,fontSize:9,color:STEXT,margin:0});
+      s3.addShape(pres.shapes.RECTANGLE, {x:0.3,y:y+0.58,w:bw,h:0.44,fill:{color:'27ae60'},line:{color:'27ae60'}});
+      s3.addText(pct(h.str), {x:bw+0.38,y:y+0.58,w:1.1,h:0.44,fontSize:11,bold:true,color:'27ae60',valign:'middle',margin:0});
+      if (i<2) s3.addShape(pres.shapes.LINE, {x:0.3,y:y+1.15,w:5.8,h:0,line:{color:LGRAY,width:0.5}});
+    });
+
+    // Bottom 3
+    bot3.forEach((h,i) => {
+      const y = 1.65 + i*1.85;
+      const bw = Math.min(5.5, Math.max(0.3, (h.str||0)*6.0));
+      const d  = dlt(h.str, h.strLM);
+      s3.addText(shortH(h.hub), {x:7.0,y,w:5.8,h:0.28,fontSize:11,bold:true,color:NAVY,margin:0});
+      s3.addText(`${pct(h.str)}   ${fmtD(d,true)} vs LM   ${num(h.vtas)} ventas MTD`, {x:7.0,y:y+0.3,w:5.8,h:0.22,fontSize:9,color:STEXT,margin:0});
+      s3.addShape(pres.shapes.RECTANGLE, {x:7.0,y:y+0.58,w:bw,h:0.44,fill:{color:'e74c3c'},line:{color:'e74c3c'}});
+      s3.addText(pct(h.str), {x:7.0+bw+0.08,y:y+0.58,w:1.1,h:0.44,fontSize:11,bold:true,color:'e74c3c',valign:'middle',margin:0});
+      if (i<2) s3.addShape(pres.shapes.LINE, {x:7.0,y:y+1.15,w:5.8,h:0,line:{color:LGRAY,width:0.5}});
+    });
+
+    s3.addShape(pres.shapes.LINE, {x:6.65,y:1.1,w:0,h:6.2,line:{color:LGRAY,width:1}});
+
+    // ═══════════════════════════════════════════════════════════
+    // SLIDE 4 — Auto-Diagnóstico
+    // ═══════════════════════════════════════════════════════════
+    const s4 = pres.addSlide();
+    s4.background = {color:LIGHT};
+    addHdr(s4, `Auto-Diagnóstico | WTD ${wtdLbl}`, 'Semáforos automáticos basados en benchmarks definidos');
+
+    const diags = [
+      {lbl:'STR Total',      val:sWTD.t,   lv:`${pct(sWTD.t)} WTD · target 75%`,   g:0.75, y:0.70,
+       ok:'En target o mejor. Ritmo de ventas sólido.',
+       warn:'Cerca del target. Identificar hubs con mayor oportunidad.',
+       bad:'Bajo target. Priorizar calidad de reservas y reducir cancelaciones.'},
+      {lbl:'STR Financing',  val:sWTD.f,   lv:`${pct(sWTD.f)} WTD · target 69%`,   g:0.69, y:0.64,
+       ok:'Financing por encima del benchmark. Perfilamiento saludable.',
+       warn:'Financing debajo del target. Reforzar seguimiento post-HO.',
+       bad:'Financing crítico. Analizar rechazos y mejorar perfilamiento de crédito.'},
+      {lbl:'STR Cash',       val:sWTD.c,   lv:`${pct(sWTD.c)} WTD · target 84%`,   g:0.84, y:0.79,
+       ok:'Cash en buen nivel. Sin alertas.',
+       warn:'Cash ligeramente bajo. Revisar motivos de cancelación Cash.',
+       bad:'Cash debajo del benchmark. Acción inmediata en hubs con mayor concentración.'},
+      {lbl:'CR Handoff',     val:crHO_W,   lv:`${pct(crHO_W)} WTD · target 80%`,   g:0.80, y:0.75,
+       ok:'Conversión HO fuerte. Funnel superior saludable.',
+       warn:'CR HO debajo del target. Analizar reservas que cancelan antes de HO.',
+       bad:'CR HO crítico. Revisar calidad de reservas y SLA Booking→HO.'},
+      {lbl:'CR Aprobación',  val:crApp_W,  lv:`${pct(crApp_W)} WTD · target 75%`,  g:0.75, y:0.70,
+       ok:'Conversión a aprobación saludable.',
+       warn:'CR App debajo del target. Revisar perfiles y criterios de crédito.',
+       bad:'CR App crítico. Alta tasa de rechazo. Coordinación inmediata con crédito.'},
+      {lbl:'Entregas Netas', val:entD>=0?1:entD>=-20?0.5:0, lv:`${num(wtd.en)} WTD · ${fmtD(entD,false)} vs LWTD`, g:0.9, y:0.4,
+       ok:`Entregas en crecimiento WoW. Backlog soporta el objetivo mensual.`,
+       warn:`Leve caída WoW en entregas. Monitorear backlog disponible por hub.`,
+       bad:`Caída fuerte WoW en entregas. Revisar backlog y bloqueos operativos.`},
+    ];
+
+    diags.forEach((d,i) => {
+      const y   = 1.12 + i*0.9;
+      const col = sem(d.val, d.g, d.y);
+      const msg = col===GREEN ? d.ok : col===AMBER ? d.warn : d.bad;
+      s4.addShape(pres.shapes.OVAL, {x:0.3,y:y+0.07,w:0.36,h:0.36,fill:{color:col},line:{color:col}});
+      s4.addText(d.lbl, {x:0.8,y:y+0.02,w:2.5,h:0.22,fontSize:10,bold:true,color:NAVY,margin:0});
+      s4.addText(d.lv,  {x:0.8,y:y+0.26,w:2.5,h:0.18,fontSize:8, color:MGRAY,margin:0});
+      s4.addText(msg,   {x:3.55,y:y+0.08,w:9.5,h:0.5, fontSize:10,color:STEXT,wrap:true,margin:0});
+      if (i<diags.length-1) s4.addShape(pres.shapes.LINE, {x:0.3,y:y+0.82,w:12.8,h:0,line:{color:LGRAY,width:0.5}});
+    });
+
+    // Actions box
+    const redD = diags.filter(d=>sem(d.val,d.g,d.y)===RED);
+    const ylwD = diags.filter(d=>sem(d.val,d.g,d.y)===AMBER);
+    const acts = [];
+    if (redD.some(d=>d.lbl.includes('Fin'))||ylwD.some(d=>d.lbl.includes('Fin'))) acts.push('Financing: Reforzar seguimiento post-HO y perfilamiento de crédito');
+    if (redD.some(d=>d.lbl.includes('CR'))||ylwD.some(d=>d.lbl.includes('CR')))   acts.push('Funnel: Analizar cancelaciones antes de HO y SLA de gestión');
+    if (redD.some(d=>d.lbl.includes('Entrega'))||ylwD.some(d=>d.lbl.includes('Entrega'))) acts.push('Entregas: Monitorear backlog y eliminar bloqueos operativos por hub');
+    if (redD.some(d=>d.lbl.includes('STR Total'))) acts.push('STR: Foco en hubs Bottom 3 con plan de acción semanal');
+    if (acts.length===0) acts.push('Todos los indicadores en target. Mantener ritmo y buscar mejora continua.');
+    const ay = 6.5;
+    s4.addShape(pres.shapes.RECTANGLE, {x:0.3,y:ay,w:12.7,h:0.72,fill:{color:'e8f0fc'},line:{color:'c5d5f0',pt:0.5}});
+    s4.addText([{text:'🎯 Acciones: ',options:{bold:true,color:NAVY,fontSize:9}},{text:acts.slice(0,3).join(' · '),options:{color:'2a3a5a',fontSize:9}}],
+      {x:0.45,y:ay+0.06,w:12.3,h:0.6,valign:'middle',wrap:true,margin:0});
+
+    // ── Guardar ───────────────────────────────────────────────────
+    const dateStr = new Date().toISOString().slice(0,10);
+    await pres.writeFile({fileName:`Kavak_Weekly_PPT_${dateStr}.pptx`});
+
+  } catch(e) {
+    console.error('PPT error:', e);
+    alert('Error generando PPT: ' + e.message);
+  } finally {
+    if (btn) { btn.classList.remove('loading'); btn.innerHTML = '&#127775; Generar PPT'; }
+  }
+}
 </script>
 </body>
 </html>
