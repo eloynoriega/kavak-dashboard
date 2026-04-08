@@ -822,12 +822,23 @@ function renderKPIs() {
   const _eSems = [...new Set(rawE_w.map(r => r.semana))].sort();
   const _bSems = [...new Set(rawBacklogSummary.weekly.map(r => r.semana))].sort();
   const _aSems = [...new Set(rawA_w.map(r => r.semana))].sort();
-  const _lastE = _eSems[_eSems.length - 1];
-  const _prevE = _eSems[_eSems.length - 2];
+
+  // Lunes de la semana actual (para excluir semanas parciales al comparar)
+  const _kpiTod = new Date(); _kpiTod.setHours(0,0,0,0);
+  const _kpiDow = _kpiTod.getDay();
+  const _kpiMon = new Date(_kpiTod); _kpiMon.setDate(_kpiTod.getDate() - (_kpiDow === 0 ? 6 : _kpiDow - 1));
+  const _kpiMonISO = _kpiMon.toISOString().slice(0, 10); // e.g. '2026-04-06'
+
+  // Solo semanas CERRADAS (antes del lunes actual) — rawE_w y rawA_w incluyen WTD parcial
+  const _eClosedSems = _eSems.filter(s => s < _kpiMonISO);
+  const _aClosedSems = _aSems.filter(s => s < _kpiMonISO);
+
+  const _lastE = _eClosedSems[_eClosedSems.length - 1]; // última sem. cerrada p.ej. '2026-03-30'
+  const _prevE = _eClosedSems[_eClosedSems.length - 2]; // penúltima sem. cerrada
   const _lastB = _bSems[_bSems.length - 1];  // semana actual = MTD proxy
   const _prevB = _bSems[_bSems.length - 2];  // semana anterior = LMTD proxy
-  const _lastA = _aSems[_aSems.length - 1];  // semana actual reservas (booking date)
-  const _prevA = _aSems[_aSems.length - 2];  // semana anterior reservas
+  const _lastA = _aClosedSems[_aClosedSems.length - 1]; // última sem. cerrada reservas
+  const _prevA = _aClosedSems[_aClosedSems.length - 2]; // penúltima sem. cerrada reservas
 
   // ── Agrega rawE_w (ventas/cancel) para una semana + hub ───────────────────
   function aggE(sem) {
