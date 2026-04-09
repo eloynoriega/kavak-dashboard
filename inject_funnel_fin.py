@@ -153,12 +153,12 @@ function renderFunnelFin() {
   // ── Utils ─────────────────────────────────────────────────────────────
   function crFn(n, d) { return d > 0 ? (n / d * 100) : null; }
   function fmtPct(v)  { return v != null ? v.toFixed(1) + '%' : '—'; }
+  let _vsLbl = '';  // set after period detection
   function deltaPP(curr, prev) {
     if (curr == null || prev == null) return '';
     const d = curr - prev;
     const cls = d >= 0 ? 'delta-up' : 'delta-down';
-    const lbl = gran === 'mensual' ? 'vs mes ant.' : 'vs sem. ant.';
-    return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp ${lbl}</span>`;
+    return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp ${_vsLbl}</span>`;
   }
 
   // ── Funnel buckets — fórmula correcta: HO/(HO+cancel_no_HO), App/(App+cancel_no_App)
@@ -202,49 +202,35 @@ function renderFunnelFin() {
     return map;
   }
 
-  // ── KPI cards: última semana cerrada vs anterior (non-cohorted) ───────
+  // ── KPI cards: respeta filtro temporal activo ─────────────────────────
+  // Mensual → MTD vs LMTD  |  Semanal/Diario → WTD vs LWTD
   const _kpiTod = new Date(); _kpiTod.setHours(0,0,0,0);
   const _kpiDow = _kpiTod.getDay();
   const _kpiMon = new Date(_kpiTod); _kpiMon.setDate(_kpiTod.getDate() - (_kpiDow === 0 ? 6 : _kpiDow - 1));
   const _kpiMonISO = _kpiMon.toISOString().slice(0, 10);
   const _eSems = [...new Set(rawFunnelFin.map(r => r.semana))].sort();
   const _closedSems = _eSems.filter(s => s < _kpiMonISO);
-  const _lastW = _closedSems[_closedSems.length - 1] || '';
-  const _prevW = _closedSems[_closedSems.length - 2] || '';
+  const _lastW = _closedSems[_closedSems.length - 1] || '';  // LWTD: última sem cerrada
+  const _curW  = _eSems.find(s => s >= _kpiMonISO) || _lastW; // WTD: semana en curso
 
   let cur, prv, curVta, prvVta, periodLabel;
 
   if (gran === 'mensual') {
-    function aggByMonthKey(rows, emptyFn, addFn) {
-      const map = {};
-      rows.forEach(r => {
-        if (hub !== '__MX__' && r.hub !== hub) return;
-        const key = (r.semana || '').slice(0, 7);
-        if (!key) return;
-        if (!map[key]) map[key] = emptyFn();
-        addFn(map[key], r);
-      });
-      return map;
-    }
-    const mMap  = aggByMonthKey(rawFunnelFin,    emptyBucket,    addRow);
-    const mVMap = aggByMonthKey(rawFunnelFinVta, emptyVtaBucket, addVtaRow);
-    const mKeys  = Object.keys(mMap).sort();
-    const mVKeys = Object.keys(mVMap).sort();
-    const lastM  = mKeys[mKeys.length - 1]  || '';
-    const prevM  = mKeys[mKeys.length - 2]  || '';
-    const lastMV = mVKeys[mVKeys.length - 1] || '';
-    const prevMV = mVKeys[mVKeys.length - 2] || '';
-    cur    = mMap[lastM]   || emptyBucket();
-    prv    = mMap[prevM]   || emptyBucket();
-    curVta = mVMap[lastMV] || emptyVtaBucket();
-    prvVta = mVMap[prevMV] || emptyVtaBucket();
-    periodLabel = lastM ? 'Mes: ' + lastM.slice(5) + '/' + lastM.slice(2, 4) : '—';
+    // MTD vs LMTD — usar datos pre-agregados rawFunnelFinMTD / rawFunnelFinLMTD
+    cur    = aggPeriod(rawFunnelFinMTD,  emptyBucket,    addRow);
+    prv    = aggPeriod(rawFunnelFinLMTD, emptyBucket,    addRow);
+    curVta = aggPeriod(rawFunnelFinMTD,  emptyVtaBucket, addVtaRow);
+    prvVta = aggPeriod(rawFunnelFinLMTD, emptyVtaBucket, addVtaRow);
+    periodLabel = 'MTD vs LMTD';
+    _vsLbl = 'vs LMTD';
   } else {
-    cur    = aggPeriod(rawFunnelFin.filter(r => r.semana === _lastW),    emptyBucket,    addRow);
-    prv    = aggPeriod(rawFunnelFin.filter(r => r.semana === _prevW),    emptyBucket,    addRow);
-    curVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _lastW), emptyVtaBucket, addVtaRow);
-    prvVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _prevW), emptyVtaBucket, addVtaRow);
-    periodLabel = _lastW ? 'Sem: ' + _lastW.slice(5).replace('-', '/') : '—';
+    // Semanal y Diario: WTD (semana actual, parcial) vs LWTD (última semana cerrada)
+    cur    = aggPeriod(rawFunnelFin.filter(r => r.semana === _curW),    emptyBucket,    addRow);
+    prv    = aggPeriod(rawFunnelFin.filter(r => r.semana === _lastW),   emptyBucket,    addRow);
+    curVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _curW), emptyVtaBucket, addVtaRow);
+    prvVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _lastW),emptyVtaBucket, addVtaRow);
+    periodLabel = 'WTD vs LWTD';
+    _vsLbl = 'vs LWTD';
   }
 
   const kpiList = [
