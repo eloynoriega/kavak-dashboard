@@ -2,10 +2,12 @@
 # ══════════════════════════════════════════════════════════════
 #  actualiza_performance.sh
 #  Uso: bash actualiza_performance.sh
-#  Actualiza todos los datos del STR Dashboard y publica en GitHub
+#  Actualiza los 3 dashboards de Kavak MX y publica en GitHub:
+#    1. STR Performance Dashboard  (kavak_str_dashboard_v2.html)
+#    2. Pipeline & Backlog         (index.html)
+#    3. Pipeline Supervisor/Cobro  (pipeline_supervisor_YYYY.html)
 # ══════════════════════════════════════════════════════════════
 
-set -e  # para si falla algo
 FETCH_ERRORS=0
 
 DIR="/Users/choloynoriega/Documents/Kavak Claude V1"
@@ -16,7 +18,7 @@ LOG="/tmp/actualiza_performance_$(date +%Y%m%d_%H%M).log"
 cd "$DIR"
 
 echo "════════════════════════════════════════"
-echo "  Performance Sales MX — Actualizando"
+echo "  Kavak MX — Actualizando 3 dashboards"
 echo "  $(date '+%Y-%m-%d %H:%M')"
 echo "════════════════════════════════════════"
 echo ""
@@ -24,6 +26,12 @@ echo ""
 run() {
   echo "▶ $1..."
   python3 "$DIR/$2" >> "$LOG" 2>&1 && echo "  ✅ Listo" || { echo "  ❌ Error en $2 — ver $LOG"; exit 1; }
+}
+
+run_safe() {
+  # Como run pero NO mata el script si falla — para dashboards independientes
+  echo "▶ $1..."
+  python3 "$DIR/$2" >> "$LOG" 2>&1 && echo "  ✅ Listo" || echo "  ⚠️  $2 falló — ver $LOG (otros dashboards no afectados)"
 }
 
 # ── 1. Fetch datos (paralelo, dim_str al final para evitar cancelación) ──────
@@ -65,17 +73,39 @@ run "Todos los demás datos (STR KPIs, cohorts, etc.)" "inject_all_data.py"
 run "Funnel Financing"               "inject_funnel_fin.py"
 echo ""
 
-# ── 3. Publicar en GitHub ──────────────────────────────────────────────────────
-echo "── Publicando en GitHub Pages ──"
+# ── 3. Publicar STR Dashboard en GitHub ──────────────────────────────────────
+echo "── [1/3] STR Performance Dashboard ──"
 cp "$HTML_SRC" "$HTML_DEST"
 git add kavak_str_dashboard_v2.html
-git commit -m "Performance update $(date '+%Y-%m-%d %H:%M')" --quiet
+git commit -m "STR Performance update $(date '+%Y-%m-%d %H:%M')" --quiet
 git push origin main --quiet
-echo "  ✅ Publicado"
+echo "  ✅ STR Dashboard publicado"
+echo ""
+
+
+# ── 4. Pipeline & Backlog Dashboard (index.html) ──────────────────────────────
+echo "── [2/3] Pipeline & Backlog Dashboard ──"
+run_safe "Pipeline & Backlog (index.html)" "generate_pipeline_dashboard.py"
+if git diff --quiet index.html 2>/dev/null; then
+  echo "  ℹ️  Sin cambios en index.html"
+else
+  git add index.html >> "$LOG" 2>&1
+  git commit -m "Pipeline Backlog update $(date '+%Y-%m-%d %H:%M')" --quiet >> "$LOG" 2>&1 \
+    && git push origin main --quiet >> "$LOG" 2>&1 \
+    && echo "  ✅ Pipeline & Backlog publicado" \
+    || echo "  ⚠️  Error publicando Pipeline Backlog — ver $LOG"
+fi
+echo ""
+
+# ── 5. Pipeline Supervisor / Cobro ────────────────────────────────────────────
+echo "── [3/3] Pipeline Supervisor / Cobro ──"
+run_safe "Pipeline Supervisor/Cobro" "pipeline_cobro_v2.py"
+# pipeline_cobro_v2.py maneja su propio git push a cobro-main — no hay que hacer nada más
 echo ""
 
 echo "════════════════════════════════════════"
-echo "  ✅ Dashboard actualizado y publicado"
-echo "  🔗 https://eloynoriega.github.io/kavak-dashboard/kavak_str_dashboard_v2.html"
+echo "  ✅ 3 dashboards actualizados"
+echo "  🔗 STR:      https://eloynoriega.github.io/kavak-dashboard/kavak_str_dashboard_v2.html"
+echo "  🔗 Pipeline: https://eloynoriega.github.io/kavak-dashboard/"
 echo "  📋 Log: $LOG"
 echo "════════════════════════════════════════"
