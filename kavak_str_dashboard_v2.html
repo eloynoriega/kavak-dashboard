@@ -251,6 +251,9 @@
 
 
 
+
+
+
 <!-- FUNNEL FIN SECTION -->
       <div class="card" style="padding:16px; grid-column: 1 / -1;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
@@ -2879,6 +2882,12 @@ function showNPSTestimonios(motivo) {
 }
 
 
+
+
+
+
+
+
 // ── FUNNEL FIN JS ──────────────────────────────────────────────────────────
 function renderFunnelFin() {
   const hub  = currentHub;
@@ -2895,14 +2904,16 @@ function renderFunnelFin() {
     return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp ${lbl}</span>`;
   }
 
-  // ── Funnel buckets (res / ho / app) — from rawFunnelFin ───────────────
+  // ── Funnel buckets — fórmula correcta: HO/(HO+cancel_no_HO), App/(App+cancel_no_App)
   function emptyBucket() {
-    return {res:0,res_s:0,res_t:0,ho:0,ho_s:0,ho_t:0,app:0,app_s:0,app_t:0};
+    return {ho:0,ho_s:0,ho_t:0, cnh:0,cnh_s:0,cnh_t:0,
+            app:0,app_s:0,app_t:0, cna:0,cna_s:0,cna_t:0};
   }
   function addRow(bucket, r) {
-    bucket.res += r.res_total||0; bucket.res_s += r.res_sales||0; bucket.res_t += r.res_ti||0;
-    bucket.ho  += r.ho_total||0;  bucket.ho_s  += r.ho_sales||0;  bucket.ho_t  += r.ho_ti||0;
-    bucket.app += r.app_total||0; bucket.app_s += r.app_sales||0; bucket.app_t += r.app_ti||0;
+    bucket.ho   += r.ho_total||0;         bucket.ho_s  += r.ho_sales||0;         bucket.ho_t  += r.ho_ti||0;
+    bucket.cnh  += r.can_no_ho_total||0;  bucket.cnh_s += r.can_no_ho_sales||0;  bucket.cnh_t += r.can_no_ho_ti||0;
+    bucket.app  += r.app_total||0;        bucket.app_s += r.app_sales||0;        bucket.app_t += r.app_ti||0;
+    bucket.cna  += r.can_no_app_total||0; bucket.cna_s += r.can_no_app_sales||0; bucket.cna_t += r.can_no_app_ti||0;
   }
 
   // ── Vta buckets (App→Venta STR-style) — from rawFunnelFinVta / MTD / LMTD ──
@@ -2934,12 +2945,19 @@ function renderFunnelFin() {
     return map;
   }
 
-  // ── KPI cards: última semana o mes completo vs anterior ──────────────
-  // (non-cohorted: cada etapa por su propia fecha de evento)
+  // ── KPI cards: última semana cerrada vs anterior (non-cohorted) ───────
+  const _kpiTod = new Date(); _kpiTod.setHours(0,0,0,0);
+  const _kpiDow = _kpiTod.getDay();
+  const _kpiMon = new Date(_kpiTod); _kpiMon.setDate(_kpiTod.getDate() - (_kpiDow === 0 ? 6 : _kpiDow - 1));
+  const _kpiMonISO = _kpiMon.toISOString().slice(0, 10);
+  const _eSems = [...new Set(rawFunnelFin.map(r => r.semana))].sort();
+  const _closedSems = _eSems.filter(s => s < _kpiMonISO);
+  const _lastW = _closedSems[_closedSems.length - 1] || '';
+  const _prevW = _closedSems[_closedSems.length - 2] || '';
+
   let cur, prv, curVta, prvVta, periodLabel;
 
   if (gran === 'mensual') {
-    // Aggregate rawFunnelFin by YYYY-MM
     function aggByMonthKey(rows, emptyFn, addFn) {
       const map = {};
       rows.forEach(r => {
@@ -2965,26 +2983,20 @@ function renderFunnelFin() {
     prvVta = mVMap[prevMV] || emptyVtaBucket();
     periodLabel = lastM ? 'Mes: ' + lastM.slice(5) + '/' + lastM.slice(2, 4) : '—';
   } else {
-    const allSemanas = [...new Set(rawFunnelFin.map(r => r.semana))].sort();
-    const lastWk = allSemanas[allSemanas.length - 1];
-    const prevWk = allSemanas[allSemanas.length - 2];
-    cur = aggPeriod(rawFunnelFin.filter(r => r.semana === lastWk), emptyBucket, addRow);
-    prv = aggPeriod(rawFunnelFin.filter(r => r.semana === prevWk), emptyBucket, addRow);
-    const allSemVta = [...new Set(rawFunnelFinVta.map(r => r.semana))].sort();
-    const lastWkV = allSemVta[allSemVta.length - 1];
-    const prevWkV = allSemVta[allSemVta.length - 2];
-    curVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === lastWkV), emptyVtaBucket, addVtaRow);
-    prvVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === prevWkV), emptyVtaBucket, addVtaRow);
-    periodLabel = lastWk ? 'Sem: ' + lastWk.slice(5).replace('-', '/') : '—';
+    cur    = aggPeriod(rawFunnelFin.filter(r => r.semana === _lastW),    emptyBucket,    addRow);
+    prv    = aggPeriod(rawFunnelFin.filter(r => r.semana === _prevW),    emptyBucket,    addRow);
+    curVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _lastW), emptyVtaBucket, addVtaRow);
+    prvVta = aggPeriod(rawFunnelFinVta.filter(r => r.semana === _prevW), emptyVtaBucket, addVtaRow);
+    periodLabel = _lastW ? 'Sem: ' + _lastW.slice(5).replace('-', '/') : '—';
   }
 
   const kpiList = [
     { id:'ho',
-      cur: crFn(cur.ho,  cur.res),  prv: crFn(prv.ho,  prv.res),
-      sub: `Sales: ${fmtPct(crFn(cur.ho_s, cur.res_s))} · TI: ${fmtPct(crFn(cur.ho_t, cur.res_t))}` },
+      cur: crFn(cur.ho,  cur.ho  + cur.cnh),  prv: crFn(prv.ho,  prv.ho  + prv.cnh),
+      sub: `Sales: ${fmtPct(crFn(cur.ho_s, cur.ho_s + cur.cnh_s))} · TI: ${fmtPct(crFn(cur.ho_t, cur.ho_t + cur.cnh_t))}` },
     { id:'app',
-      cur: crFn(cur.app, cur.res),  prv: crFn(prv.app, prv.res),
-      sub: `Sales: ${fmtPct(crFn(cur.app_s, cur.res_s))} · TI: ${fmtPct(crFn(cur.app_t, cur.res_t))}` },
+      cur: crFn(cur.app, cur.app + cur.cna),  prv: crFn(prv.app, prv.app + prv.cna),
+      sub: `Sales: ${fmtPct(crFn(cur.app_s, cur.app_s + cur.cna_s))} · TI: ${fmtPct(crFn(cur.app_t, cur.app_t + cur.cna_t))}` },
     { id:'vta',
       cur: crFn(curVta.vta, curVta.vta + curVta.can),
       prv: crFn(prvVta.vta, prvVta.vta + prvVta.can),
@@ -3023,14 +3035,14 @@ function renderFunnelFin() {
   // ── Render 3 charts ───────────────────────────────────────────────────
   const chartDefs = [
     { chartKey:'funnel-ho', map: timeMap, sets:[
-        {label:'Total',  fn: m => crFn(m.ho,   m.res),   col:'#1a3a5c'},
-        {label:'Sales',  fn: m => crFn(m.ho_s, m.res_s), col:'#2980b9', dash:[4,3]},
-        {label:'Con TI', fn: m => crFn(m.ho_t, m.res_t), col:'#e67e22', dash:[2,3]},
+        {label:'Total',  fn: m => crFn(m.ho,   m.ho   + m.cnh),   col:'#1a3a5c'},
+        {label:'Sales',  fn: m => crFn(m.ho_s, m.ho_s + m.cnh_s), col:'#2980b9', dash:[4,3]},
+        {label:'Con TI', fn: m => crFn(m.ho_t, m.ho_t + m.cnh_t), col:'#e67e22', dash:[2,3]},
     ]},
     { chartKey:'funnel-app', map: timeMap, sets:[
-        {label:'Total',  fn: m => crFn(m.app,   m.res),   col:'#1a3a5c'},
-        {label:'Sales',  fn: m => crFn(m.app_s, m.res_s), col:'#2980b9', dash:[4,3]},
-        {label:'Con TI', fn: m => crFn(m.app_t, m.res_t), col:'#e67e22', dash:[2,3]},
+        {label:'Total',  fn: m => crFn(m.app,   m.app   + m.cna),   col:'#1a3a5c'},
+        {label:'Sales',  fn: m => crFn(m.app_s, m.app_s + m.cna_s), col:'#2980b9', dash:[4,3]},
+        {label:'Con TI', fn: m => crFn(m.app_t, m.app_t + m.cna_t), col:'#e67e22', dash:[2,3]},
     ]},
     { chartKey:'funnel-vta', map: vtaMap, sets:[
         {label:'Total',  fn: m => crFn(m.vta,   m.vta   + m.can),   col:'#27ae60'},
