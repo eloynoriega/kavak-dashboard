@@ -1751,9 +1751,15 @@ function renderCohortChart() {
   const datasets = nonAvg.map((c, i) => {
     const isLast = i === nonAvg.length - 1;
     const color  = cohortColors[i % cohortColors.length];
+    // Determine if this is the current (in-progress) week early, so data mapping can use it
+    const _isCurrentWeek = isLast && c.iso && window._thisWeekMonISO && c.iso >= window._thisWeekMonISO;
     const ds = {
       label: c.cohort,
-      data: xKeys.map(k => c[k]),
+      data: xKeys.map(k => {
+        // Null out future days for current week (elapsed < minDays) → line ends at last real point
+        if (_isCurrentWeek && (window._cohortElapsed || 0) < (_xKeyMinDays[k] || 0)) return null;
+        return c[k];
+      }),
       borderColor: color,
       borderWidth: isLast ? 3.5 : (POST_COHORTS.includes(c.cohort) ? 2 : 1.5),
       borderDash: POST_COHORTS.includes(c.cohort) ? [] : [],
@@ -1761,10 +1767,8 @@ function renderCohortChart() {
       tension: 0.1,
       spanGaps: true,
     };
-    // For the current (in-progress) week: dash points beyond elapsed days
+    // For the current (in-progress) week: dash the last segment
     if (isLast) {
-      // Solo aplicar punteado si este cohort ES la semana actual (no si ya cerró)
-      const _isCurrentWeek = c.iso && window._thisWeekMonISO && c.iso >= window._thisWeekMonISO;
       if (_isCurrentWeek) {
         ds.segment = {
           borderDash: ctx => {
