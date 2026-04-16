@@ -33,21 +33,26 @@ def load_optional(path):
     print(f"  ⚠️  {path} not found")
     return None
 
-sla_data    = load_optional('/tmp/rawFunnelSLA.json')
-dict_data   = load_optional('/tmp/rawDictamen.json')
-perfil_data = load_optional('/tmp/rawFunnelPerfil.json')
+sla_ho_data  = load_optional('/tmp/rawSLAHO.json')
+sla_app_data = load_optional('/tmp/rawSLAApp.json')
+sla_vta_data = load_optional('/tmp/rawSLAVta.json')
+dict_data    = load_optional('/tmp/rawDictamen.json')
+perfil_data  = load_optional('/tmp/rawFunnelPerfil.json')
 
-HAS_SLA    = sla_data    is not None
+HAS_SLA    = sla_ho_data is not None and sla_app_data is not None and sla_vta_data is not None
 HAS_DICT   = dict_data   is not None
 HAS_PERFIL = perfil_data is not None
 
-sla_json    = json.dumps(sla_data,    separators=(',',':')) if HAS_SLA    else '[]'
-dict_json   = json.dumps(dict_data,   separators=(',',':')) if HAS_DICT   else '[]'
-perfil_json = json.dumps(perfil_data, separators=(',',':')) if HAS_PERFIL else '[]'
+sla_ho_json  = json.dumps(sla_ho_data,  separators=(',',':')) if sla_ho_data  else '[]'
+sla_app_json = json.dumps(sla_app_data, separators=(',',':')) if sla_app_data else '[]'
+sla_vta_json = json.dumps(sla_vta_data, separators=(',',':')) if sla_vta_data else '[]'
+dict_json    = json.dumps(dict_data,    separators=(',',':')) if HAS_DICT     else '[]'
+perfil_json  = json.dumps(perfil_data,  separators=(',',':')) if HAS_PERFIL   else '[]'
 
 # ── 2. Remove existing section ───────────────────────────────────────────────
 for var in ['rawFunnelFin','rawFunnelFinVta','rawFunnelFinMTD','rawFunnelFinLMTD',
-            'rawFunnelSLA','rawDictamen','rawFunnelPerfil']:
+            'rawFunnelSLA','rawSLAHO','rawSLAApp','rawSLAVta',
+            'rawDictamen','rawFunnelPerfil']:
     marker = f'const {var} = '
     while marker in html:
         pos = html.find(marker)
@@ -96,7 +101,9 @@ data_block = (
     f'const rawFunnelFinVta = {funnel_vta_json};\n'
     f'const rawFunnelFinMTD = {funnel_mtd_json};\n'
     f'const rawFunnelFinLMTD = {funnel_lmtd_json};\n'
-    f'const rawFunnelSLA = {sla_json};\n'
+    f'const rawSLAHO = {sla_ho_json};\n'
+    f'const rawSLAApp = {sla_app_json};\n'
+    f'const rawSLAVta = {sla_vta_json};\n'
     f'const rawDictamen = {dict_json};\n'
     f'const rawFunnelPerfil = {perfil_json};\n'
 )
@@ -447,7 +454,7 @@ function renderFunnelFin() {
 }
 
 function renderFunnelSLA() {
-  if(!rawFunnelSLA||rawFunnelSLA.length===0) return;
+  if(!rawSLAHO||rawSLAHO.length===0) return;
   const hub    = currentHub;
   const gran   = currentGran;
   const tiMode = currentFunnelTI;
@@ -465,40 +472,50 @@ function renderFunnelSLA() {
     return sw>0?swv/sw:null;
   }
 
-  const P = _funnelPeriod(rawFunnelSLA,'semana');
+  // Cada SLA tiene su propio período basado en su evento
+  const PH = _funnelPeriod(rawSLAHO, 'semana');
+  const PA = _funnelPeriod(rawSLAApp,'semana');
+  const PV = _funnelPeriod(rawSLAVta,'semana');
 
-  // KPI: siempre usa última semana COMPLETA vs la anterior (evita WTD parcial)
-  const curRows = filterRows(rawFunnelSLA.filter(r=>r.semana===P.lastW));
-  const prvRows = filterRows(rawFunnelSLA.filter(r=>r.semana===P.prevW));
-  let periodLabel,_vsLbl;
-  if(gran==='mensual'){
-    // Para mensual usamos MTD vs mes anterior
-    const cm=P.curMonth, pm=P.prevMonth;
-    const curRowsM=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===cm));
-    const prvRowsM=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===pm));
-    periodLabel='MTD'; _vsLbl='vs mes ant';
-    renderSLAKPIs(curRowsM,prvRowsM,'MTD vs mes ant','vs mes ant',wAvg);
-  } else {
-    periodLabel='Última sem'; _vsLbl='vs sem ant';
-    renderSLAKPIs(curRows,prvRows,'Última sem completa vs anterior','vs sem ant',wAvg);
+  // KPI: usa CURRENT week (puede ser parcial — pero es real: HOs/Apps/Vtas de esta semana)
+  // Para mensual: MTD
+  let vsLbl = gran==='mensual' ? 'vs mes ant' : 'vs sem ant';
+  let subLbl = gran==='mensual' ? 'MTD vs mes ant' : 'WTD vs sem ant';
+
+  function getKpiRows(dataset, P, slaKey, cntKey) {
+    if(gran==='mensual') {
+      const cur=filterRows(dataset.filter(r=>r.semana.slice(0,7)===P.curMonth));
+      const prv=filterRows(dataset.filter(r=>r.semana.slice(0,7)===P.prevMonth));
+      return {cur:wAvg(cur,slaKey,cntKey), prv:wAvg(prv,slaKey,cntKey)};
+    } else {
+      // WTD = incluimos semana en curso (los HOs/Apps/Vtas que ya ocurrieron esta semana son reales)
+      const cur=filterRows(dataset.filter(r=>r.semana===P.curW));
+      const prv=filterRows(dataset.filter(r=>r.semana===P.lastW));
+      return {cur:wAvg(cur,slaKey,cntKey), prv:wAvg(prv,slaKey,cntKey)};
+    }
   }
 
-  // Trend charts — 3 separados
+  const kH = getKpiRows(rawSLAHO, PH,'sla_res_ho','n_ho');
+  const kA = getKpiRows(rawSLAApp,PA,'sla_res_app','n_app');
+  const kV = getKpiRows(rawSLAVta,PV,'sla_app_vta','n_vta');
+
+  renderSLAKPIs(
+    [{id:'res-ho', cur:kH.cur, prv:kH.prv},
+     {id:'res-app',cur:kA.cur, prv:kA.prv},
+     {id:'app-vta',cur:kV.cur, prv:kV.prv}],
+    subLbl, vsLbl
+  );
+
+  // Trend charts — 3 separados, cada uno con su propio dataset y semana
   const SLA_DEFS = [
-    {chartKey:'sla-ho',  slaKey:'sla_res_ho',  cntKey:'n_ho',  col:'#1a3a5c', label:'Res→HO días'},
-    {chartKey:'sla-app', slaKey:'sla_res_app', cntKey:'n_app', col:'#2980b9', label:'Res→App días'},
-    {chartKey:'sla-vta', slaKey:'sla_app_vta', cntKey:'n_vta', col:'#27ae60', label:'App→Vta días'},
+    {chartKey:'sla-ho',  dataset:rawSLAHO,  slaKey:'sla_res_ho',  cntKey:'n_ho',  col:'#1a3a5c', label:'Res→HO (por sem de HO)'},
+    {chartKey:'sla-app', dataset:rawSLAApp, slaKey:'sla_res_app', cntKey:'n_app', col:'#2980b9', label:'Res→App (por sem de aprobación)'},
+    {chartKey:'sla-vta', dataset:rawSLAVta, slaKey:'sla_app_vta', cntKey:'n_vta', col:'#27ae60', label:'App→Vta (por sem de venta)'},
   ];
 
   SLA_DEFS.forEach(def=>{
     const tmap={};
-    filterRows(rawFunnelSLA).forEach(r=>{
-      // Excluir semana/mes en curso (parcial) — mismo principio que cohort
-      if(gran==='mensual'){
-        if(r.semana.slice(0,7)>=P.curMonth) return;
-      } else {
-        if(r.semana>=P.monISO) return; // excluir semana en curso
-      }
+    filterRows(def.dataset).forEach(r=>{
       const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
       if(!tmap[key])tmap[key]={n:0,wt:0};
       if(r[def.slaKey]!=null&&(r[def.cntKey]||0)>0){
@@ -529,7 +546,7 @@ function renderFunnelSLA() {
   });
 }
 
-function renderSLAKPIs(curRows,prvRows,periodLabel,vsLbl,wAvg) {
+function renderSLAKPIs(kpis, periodLabel, vsLbl) {
   function fmtD(v) { return v!=null?v.toFixed(1)+'d':'—'; }
   function dDay(c,p) {
     if(c==null||p==null) return '';
@@ -537,13 +554,9 @@ function renderSLAKPIs(curRows,prvRows,periodLabel,vsLbl,wAvg) {
     return `<span class="${cls}">${d>=0?'+':''}${d.toFixed(1)}d ${vsLbl}</span>`;
   }
   const setEl=(id,fn)=>{const el=document.getElementById(id);if(el)fn(el);};
-  [{id:'res-ho', sk:'sla_res_ho', ck:'n_ho'},
-   {id:'res-app',sk:'sla_res_app',ck:'n_app'},
-   {id:'app-vta',sk:'sla_app_vta',ck:'n_vta'},
-  ].forEach(k=>{
-    const c=wAvg(curRows,k.sk,k.ck),p=wAvg(prvRows,k.sk,k.ck);
-    setEl('kpi-sla-'+k.id+'-val',  el=>el.textContent=fmtD(c));
-    setEl('kpi-sla-'+k.id+'-delta',el=>el.innerHTML=dDay(c,p));
+  kpis.forEach(k=>{
+    setEl('kpi-sla-'+k.id+'-val',  el=>el.textContent=fmtD(k.cur));
+    setEl('kpi-sla-'+k.id+'-delta',el=>el.innerHTML=dDay(k.cur,k.prv));
     setEl('kpi-sla-'+k.id+'-sub',  el=>el.textContent=periodLabel);
   });
 }
