@@ -297,6 +297,7 @@
 
 
 
+
 <!-- FUNNEL FIN SECTION -->
       <div class="card" style="padding:16px; grid-column: 1 / -1;">
 
@@ -350,49 +351,121 @@
           </div>
         </div>
 
-        <!-- Sub-B: SLA por Etapa -->
+        <!-- Sub-B: SLA por Etapa — 3 columnas card+chart -->
         <div style="margin-top:20px; border-top:1px solid #e0e6ef; padding-top:16px;">
           <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#6b7fa3; margin-bottom:12px;">⏱ SLA por Etapa — días promedio</div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px;">
-            <div class="kpi-card" style="border-left-color:#1a3a5c;">
-              <div class="kpi-label">Res → Handoff</div>
-              <div class="kpi-value" id="kpi-sla-res-ho-val">—</div>
-              <div class="kpi-delta" id="kpi-sla-res-ho-delta"></div>
-              <div class="kpi-sub">días promedio</div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+
+            <!-- Res→HO -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#1a3a5c; margin-bottom:10px;">
+                <div class="kpi-label">Res → Handoff</div>
+                <div class="kpi-value" id="kpi-sla-res-ho-val">—</div>
+                <div class="kpi-delta" id="kpi-sla-res-ho-delta"></div>
+                <div class="kpi-sub" id="kpi-sla-res-ho-sub">días promedio</div>
+              </div>
+              <div class="chart-wrap" style="height:175px;"><canvas id="chart-sla-ho"></canvas></div>
             </div>
-            <div class="kpi-card" style="border-left-color:#2980b9;">
-              <div class="kpi-label">Res → Aprobada</div>
-              <div class="kpi-value" id="kpi-sla-res-app-val">—</div>
-              <div class="kpi-delta" id="kpi-sla-res-app-delta"></div>
-              <div class="kpi-sub">días promedio</div>
+
+            <!-- Res→App -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#2980b9; margin-bottom:10px;">
+                <div class="kpi-label">Res → Aprobada</div>
+                <div class="kpi-value" id="kpi-sla-res-app-val">—</div>
+                <div class="kpi-delta" id="kpi-sla-res-app-delta"></div>
+                <div class="kpi-sub" id="kpi-sla-res-app-sub">días promedio</div>
+              </div>
+              <div class="chart-wrap" style="height:175px;"><canvas id="chart-sla-app"></canvas></div>
             </div>
-            <div class="kpi-card" style="border-left-color:#27ae60;">
-              <div class="kpi-label">Aprobada → Venta</div>
-              <div class="kpi-value" id="kpi-sla-app-vta-val">—</div>
-              <div class="kpi-delta" id="kpi-sla-app-vta-delta"></div>
-              <div class="kpi-sub">días promedio</div>
+
+            <!-- App→Vta -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#27ae60; margin-bottom:10px;">
+                <div class="kpi-label">Aprobada → Venta</div>
+                <div class="kpi-value" id="kpi-sla-app-vta-val">—</div>
+                <div class="kpi-delta" id="kpi-sla-app-vta-delta"></div>
+                <div class="kpi-sub" id="kpi-sla-app-vta-sub">días promedio</div>
+              </div>
+              <div class="chart-wrap" style="height:175px;"><canvas id="chart-sla-vta"></canvas></div>
             </div>
+
           </div>
-          <div class="chart-wrap" style="height:190px;"><canvas id="chart-sla-etapa"></canvas></div>
+          <div style="font-size:10px; color:#6b7fa3; margin-top:6px;">SLA por semana de <b>reserva</b> · Financing · b2b=0 · estimate_flag=1 · KPI = última semana completa</div>
         </div>
 
         <!-- Sub-C: Dictámenes Kuna -->
         <div style="margin-top:20px; border-top:1px solid #e0e6ef; padding-top:16px;">
-          <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px; flex-wrap:wrap;">
-            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#6b7fa3;">🏦 Dictámenes Kuna</div>
+          <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#6b7fa3;">🏦 Dictámenes Kuna</div>
+              <div style="font-size:10px; color:#6b7fa3; margin-top:3px;">Primer dictamen por semana de <b>reserva</b> · % del total de reservas Financing</div>
+            </div>
             <div class="kpi-card" style="border-left-color:#27ae60; padding:8px 14px; margin:0; display:inline-flex; flex-direction:column; gap:2px;">
-              <div class="kpi-label" style="margin-bottom:0;">% Primer Dictamen Aprobada</div>
+              <div class="kpi-label" style="margin-bottom:0;">Aprobada (período activo)</div>
               <div class="kpi-value" id="kpi-dict-aprobada" style="font-size:20px;">—</div>
             </div>
           </div>
-          <div class="chart-wrap" style="height:210px;"><canvas id="chart-dictamen"></canvas></div>
+          <div class="chart-wrap" style="height:220px;"><canvas id="chart-dictamen"></canvas></div>
         </div>
 
         <!-- Sub-D: CR por Perfil -->
         <div style="margin-top:20px; border-top:1px solid #e0e6ef; padding-top:16px;">
           <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#6b7fa3; margin-bottom:12px;">👤 CR por Perfil Crediticio</div>
-          <div class="chart-wrap" style="height:230px;"><canvas id="chart-perfil-cr"></canvas></div>
-          <div style="font-size:10px; color:#6b7fa3; margin-top:5px;">X = Mejor historial · A · B · C = Más restrictivo · últimas 4 semanas completas (semanal/diario) o MTD (mensual)</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+            <!-- Perfil X -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#1a3a5c; margin-bottom:10px; text-align:center;">
+                <div class="kpi-value" style="font-size:17px; color:#1a3a5c;">Perfil X</div>
+                <div class="kpi-sub" style="margin-top:2px;">Mejor historial</div>
+              </div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin-bottom:3px;">CR Res→HO (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-X-ho"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Res→Aprobada (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-X-app"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Aprobada→Venta (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-X-vta"></canvas></div>
+            </div>
+            <!-- Perfil A -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#2980b9; margin-bottom:10px; text-align:center;">
+                <div class="kpi-value" style="font-size:17px; color:#2980b9;">Perfil A</div>
+                <div class="kpi-sub" style="margin-top:2px;">Historial sólido</div>
+              </div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin-bottom:3px;">CR Res→HO (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-A-ho"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Res→Aprobada (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-A-app"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Aprobada→Venta (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-A-vta"></canvas></div>
+            </div>
+            <!-- Perfil B -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#8e44ad; margin-bottom:10px; text-align:center;">
+                <div class="kpi-value" style="font-size:17px; color:#8e44ad;">Perfil B</div>
+                <div class="kpi-sub" style="margin-top:2px;">Historial medio</div>
+              </div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin-bottom:3px;">CR Res→HO (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-B-ho"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Res→Aprobada (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-B-app"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Aprobada→Venta (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-B-vta"></canvas></div>
+            </div>
+            <!-- Perfil C -->
+            <div>
+              <div class="kpi-card" style="border-left-color:#e67e22; margin-bottom:10px; text-align:center;">
+                <div class="kpi-value" style="font-size:17px; color:#e67e22;">Perfil C</div>
+                <div class="kpi-sub" style="margin-top:2px;">Más restrictivo</div>
+              </div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin-bottom:3px;">CR Res→HO (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-C-ho"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Res→Aprobada (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-C-app"></canvas></div>
+              <div style="font-size:9px; color:#6b7fa3; text-transform:uppercase; font-weight:700; letter-spacing:.4px; margin:8px 0 3px;">CR Aprobada→Venta (%)</div>
+              <div class="chart-wrap" style="height:130px;"><canvas id="chart-perfil-C-vta"></canvas></div>
+            </div>
+          </div>
+          <div style="font-size:10px; color:#6b7fa3; margin-top:8px;">Semanal: últimas 7 sem · Mensual: últimos 4 meses · CR por semana de reserva · Financing · b2b=0 · estimate_flag=1</div>
         </div>
 
         <div style="font-size:10px; color:#6b7fa3; margin-top:10px;">
@@ -3230,6 +3303,8 @@ panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
 
 
+
+
 // ── FUNNEL FIN JS ──────────────────────────────────────────────────────────
 let currentFunnelTI = 'total'; // 'total' | 'sin_ti' | 'con_ti'
 
@@ -3245,23 +3320,41 @@ function setFunnelTI(val) {
   renderFunnelPerfil();
 }
 
+// ── SHARED PERIOD HELPERS ─────────────────────────────────────────────────
+function _funnelPeriod(dataRows, semanaCol) {
+  // Returns {curW, lastW, prevW, monISO, todISO, curMonth, prevMonth}
+  const tod = new Date(); tod.setHours(0,0,0,0);
+  const dow = tod.getDay();
+  const mon = new Date(tod); mon.setDate(tod.getDate()-(dow===0?6:dow-1));
+  const monISO = mon.toISOString().slice(0,10);
+  const sems   = [...new Set(dataRows.map(r=>r[semanaCol]))].sort();
+  const closed = sems.filter(s=>s<monISO);
+  // curW  = semana en curso (puede estar incompleta)
+  // lastW = última semana CERRADA (para KPI de semanal/diario)
+  // prevW = semana antes de lastW (comparación KPI)
+  const lastW = closed[closed.length-1]||'';
+  const prevW = closed[closed.length-2]||'';
+  const curW  = sems.find(s=>s>=monISO)||lastW;
+  const curMonth  = tod.toISOString().slice(0,7);
+  const prevMonDt = new Date(tod.getFullYear(),tod.getMonth()-1,1);
+  const prevMonth = prevMonDt.toISOString().slice(0,7);
+  return {curW,lastW,prevW,curMonth,prevMonth,monISO,sems,closed};
+}
+
 function renderFunnelFin() {
   const hub    = currentHub;
   const gran   = currentGran;
   const tiMode = currentFunnelTI;
 
-  // ── Helpers ───────────────────────────────────────────────────────────
-  function crFn(n, d)  { return d > 0 ? (n / d * 100) : null; }
-  function fmtPct(v)   { return v != null ? v.toFixed(1) + '%' : '—'; }
-  let _vsLbl = '';
-  function deltaPP(curr, prev) {
-    if (curr == null || prev == null) return '';
-    const d = curr - prev;
-    const cls = d >= 0 ? 'delta-up' : 'delta-down';
-    return `<span class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp ${_vsLbl}</span>`;
+  function crFn(n,d)  { return d>0?(n/d*100):null; }
+  function fmtPct(v)  { return v!=null?v.toFixed(1)+'%':'—'; }
+  let _vsLbl='';
+  function deltaPP(c,p) {
+    if(c==null||p==null) return '';
+    const d=c-p; const cls=d>=0?'delta-up':'delta-down';
+    return `<span class="${cls}">${d>=0?'+':''}${d.toFixed(1)}pp ${_vsLbl}</span>`;
   }
 
-  // ── TI-aware column selectors (rawFunnelFin / rawFunnelFinVta rows) ───
   function getHO(r)   { return tiMode==='sin_ti'?(r.ho_sales||0):tiMode==='con_ti'?(r.ho_ti||0):(r.ho_total||0); }
   function getCNH(r)  { return tiMode==='sin_ti'?(r.can_no_ho_sales||0):tiMode==='con_ti'?(r.can_no_ho_ti||0):(r.can_no_ho_total||0); }
   function getAPP(r)  { return tiMode==='sin_ti'?(r.app_sales||0):tiMode==='con_ti'?(r.app_ti||0):(r.app_total||0); }
@@ -3269,116 +3362,108 @@ function renderFunnelFin() {
   function getVTA(r)  { return tiMode==='sin_ti'?(r.vta_app_sales||0):tiMode==='con_ti'?(r.vta_app_ti||0):(r.vta_app_total||0); }
   function getCANV(r) { return tiMode==='sin_ti'?(r.cancel_app_sales||0):tiMode==='con_ti'?(r.cancel_app_ti||0):(r.cancel_app_total||0); }
 
-  // ── Aggregate ─────────────────────────────────────────────────────────
   function emptyB()  { return {ho:0,cnh:0,app:0,cna:0}; }
-  function addB(b,r) { b.ho+=getHO(r); b.cnh+=getCNH(r); b.app+=getAPP(r); b.cna+=getCNA(r); }
+  function addB(b,r) { b.ho+=getHO(r);b.cnh+=getCNH(r);b.app+=getAPP(r);b.cna+=getCNA(r); }
   function emptyV()  { return {vta:0,can:0}; }
-  function addV(b,r) { b.vta+=getVTA(r); b.can+=getCANV(r); }
+  function addV(b,r) { b.vta+=getVTA(r);b.can+=getCANV(r); }
 
-  function aggPeriod(rows, emptyFn, addFn) {
-    const s = emptyFn();
-    rows.forEach(r => { if (hub==='__MX__' || r.hub===hub) addFn(s,r); });
-    return s;
+  function aggPeriod(rows,emptyFn,addFn) {
+    const s=emptyFn(); rows.forEach(r=>{if(hub==='__MX__'||r.hub===hub)addFn(s,r);}); return s;
   }
-  function aggByTime(rows, keyCol, emptyFn, addFn) {
-    const map = {};
-    rows.forEach(r => {
-      if (hub!=='__MX__' && r.hub!==hub) return;
-      const key = gran==='mensual' ? r[keyCol].slice(0,7) : r[keyCol];
-      if (!map[key]) map[key] = emptyFn();
-      addFn(map[key], r);
+  function aggByTime(rows,keyCol,emptyFn,addFn) {
+    const map={};
+    rows.forEach(r=>{
+      if(hub!=='__MX__'&&r.hub!==hub) return;
+      const key=gran==='mensual'?r[keyCol].slice(0,7):r[keyCol];
+      if(!map[key])map[key]=emptyFn(); addFn(map[key],r);
     });
     return map;
   }
 
-  // ── Period detection ──────────────────────────────────────────────────
-  const _tod = new Date(); _tod.setHours(0,0,0,0);
-  const _dow = _tod.getDay();
-  const _mon = new Date(_tod); _mon.setDate(_tod.getDate()-(_dow===0?6:_dow-1));
-  const _monISO = _mon.toISOString().slice(0,10);
-  const _eSems = [...new Set(rawFunnelFin.map(r=>r.semana))].sort();
-  const _closed = _eSems.filter(s=>s<_monISO);
-  const _lastW  = _closed[_closed.length-1]||'';
-  const _curW   = _eSems.find(s=>s>=_monISO)||_lastW;
+  const P = _funnelPeriod(rawFunnelFin,'semana');
 
-  let cur, prv, curVta, prvVta, periodLabel;
-  if (gran==='mensual') {
-    cur    = aggPeriod(rawFunnelFinMTD,  emptyB, addB);
-    prv    = aggPeriod(rawFunnelFinLMTD, emptyB, addB);
-    curVta = aggPeriod(rawFunnelFinMTD,  emptyV, addV);
-    prvVta = aggPeriod(rawFunnelFinLMTD, emptyV, addV);
+  let cur,prv,curVta,prvVta,periodLabel;
+  if(gran==='mensual'){
+    cur    =aggPeriod(rawFunnelFinMTD, emptyB,addB);
+    prv    =aggPeriod(rawFunnelFinLMTD,emptyB,addB);
+    curVta =aggPeriod(rawFunnelFinMTD, emptyV,addV);
+    prvVta =aggPeriod(rawFunnelFinLMTD,emptyV,addV);
     periodLabel='MTD vs LMTD'; _vsLbl='vs LMTD';
+  } else if(gran==='diario'){
+    // Diario: WTD vs LWTD
+    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.curW),    emptyB,addB);
+    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.lastW),   emptyB,addB);
+    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.curW), emptyV,addV);
+    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.lastW),emptyV,addV);
+    periodLabel='WTD vs LWTD'; _vsLbl='vs LWTD';
   } else {
-    cur    = aggPeriod(rawFunnelFin.filter(r=>r.semana===_curW),    emptyB, addB);
-    prv    = aggPeriod(rawFunnelFin.filter(r=>r.semana===_lastW),   emptyB, addB);
-    curVta = aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_curW), emptyV, addV);
-    prvVta = aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_lastW),emptyV, addV);
+    // Semanal: WTD vs LWTD
+    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.curW),    emptyB,addB);
+    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.lastW),   emptyB,addB);
+    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.curW), emptyV,addV);
+    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.lastW),emptyV,addV);
     periodLabel='WTD vs LWTD'; _vsLbl='vs LWTD';
   }
 
-  // ── KPI sub text (only in Total mode: show Sin TI vs Con TI breakdown) ─
-  let subHO='', subAPP='', subVTA='';
-  if (tiMode==='total') {
-    const srcRows  = gran==='mensual' ? rawFunnelFinMTD  : rawFunnelFin.filter(r=>r.semana===_curW);
-    const srcVRows = gran==='mensual' ? rawFunnelFinMTD  : rawFunnelFinVta.filter(r=>r.semana===_curW);
-    const sin={ho:0,cnh:0,app:0,cna:0}, con={ho:0,cnh:0,app:0,cna:0};
-    srcRows.forEach(r => {
-      if (hub!=='__MX__' && r.hub!==hub) return;
-      sin.ho+=r.ho_sales||0;     sin.cnh+=r.can_no_ho_sales||0;  sin.app+=r.app_sales||0;     sin.cna+=r.can_no_app_sales||0;
-      con.ho+=r.ho_ti||0;        con.cnh+=r.can_no_ho_ti||0;     con.app+=r.app_ti||0;         con.cna+=r.can_no_app_ti||0;
+  // Sub text (only total mode)
+  let subHO='',subAPP='',subVTA='';
+  if(tiMode==='total'){
+    const srcR  = gran==='mensual'?rawFunnelFinMTD :rawFunnelFin.filter(r=>r.semana===P.curW);
+    const srcVR = gran==='mensual'?rawFunnelFinMTD :rawFunnelFinVta.filter(r=>r.semana===P.curW);
+    const sin={ho:0,cnh:0,app:0,cna:0},con={ho:0,cnh:0,app:0,cna:0};
+    srcR.forEach(r=>{
+      if(hub!=='__MX__'&&r.hub!==hub) return;
+      sin.ho+=r.ho_sales||0;sin.cnh+=r.can_no_ho_sales||0;sin.app+=r.app_sales||0;sin.cna+=r.can_no_app_sales||0;
+      con.ho+=r.ho_ti||0;   con.cnh+=r.can_no_ho_ti||0;   con.app+=r.app_ti||0;   con.cna+=r.can_no_app_ti||0;
     });
-    let vs=0,vc=0,vsc=0,vcc=0;
-    srcVRows.forEach(r => {
-      if (hub!=='__MX__' && r.hub!==hub) return;
-      vs+=r.vta_app_sales||0; vsc+=r.cancel_app_sales||0;
-      vc+=r.vta_app_ti||0;    vcc+=r.cancel_app_ti||0;
+    let vs=0,vsc=0,vc=0,vcc=0;
+    srcVR.forEach(r=>{
+      if(hub!=='__MX__'&&r.hub!==hub) return;
+      vs+=r.vta_app_sales||0;vsc+=r.cancel_app_sales||0;vc+=r.vta_app_ti||0;vcc+=r.cancel_app_ti||0;
     });
-    subHO  = `Sin TI: ${fmtPct(crFn(sin.ho,sin.ho+sin.cnh))} · Con TI: ${fmtPct(crFn(con.ho,con.ho+con.cnh))}`;
-    subAPP = `Sin TI: ${fmtPct(crFn(sin.app,sin.app+sin.cna))} · Con TI: ${fmtPct(crFn(con.app,con.app+con.cna))}`;
-    subVTA = `Sin TI: ${fmtPct(crFn(vs,vs+vsc))} · Con TI: ${fmtPct(crFn(vc,vc+vcc))}`;
+    subHO  =`Sin TI: ${fmtPct(crFn(sin.ho,sin.ho+sin.cnh))} · Con TI: ${fmtPct(crFn(con.ho,con.ho+con.cnh))}`;
+    subAPP =`Sin TI: ${fmtPct(crFn(sin.app,sin.app+sin.cna))} · Con TI: ${fmtPct(crFn(con.app,con.app+con.cna))}`;
+    subVTA =`Sin TI: ${fmtPct(crFn(vs,vs+vsc))} · Con TI: ${fmtPct(crFn(vc,vc+vcc))}`;
   }
 
-  const kpis = [
-    {id:'ho',  cur:crFn(cur.ho,  cur.ho +cur.cnh),  prv:crFn(prv.ho,  prv.ho +prv.cnh),  sub:subHO},
-    {id:'app', cur:crFn(cur.app, cur.app+cur.cna),   prv:crFn(prv.app, prv.app+prv.cna),  sub:subAPP},
-    {id:'vta', cur:crFn(curVta.vta,curVta.vta+curVta.can), prv:crFn(prvVta.vta,prvVta.vta+prvVta.can), sub:subVTA},
+  const kpis=[
+    {id:'ho', cur:crFn(cur.ho,cur.ho+cur.cnh),  prv:crFn(prv.ho,prv.ho+prv.cnh),  sub:subHO},
+    {id:'app',cur:crFn(cur.app,cur.app+cur.cna), prv:crFn(prv.app,prv.app+prv.cna),sub:subAPP},
+    {id:'vta',cur:crFn(curVta.vta,curVta.vta+curVta.can),prv:crFn(prvVta.vta,prvVta.vta+prvVta.can),sub:subVTA},
   ];
-  const setEl = (id,fn) => { const el=document.getElementById(id); if(el) fn(el); };
-  kpis.forEach(k => {
-    setEl('kpi-funnel-'+k.id+'-val',   el => el.textContent = fmtPct(k.cur));
-    setEl('kpi-funnel-'+k.id+'-delta', el => el.innerHTML   = deltaPP(k.cur,k.prv));
-    setEl('kpi-funnel-'+k.id+'-sub',   el => el.textContent = k.sub);
+  const setEl=(id,fn)=>{const el=document.getElementById(id);if(el)fn(el);};
+  kpis.forEach(k=>{
+    setEl('kpi-funnel-'+k.id+'-val',  el=>el.textContent=fmtPct(k.cur));
+    setEl('kpi-funnel-'+k.id+'-delta',el=>el.innerHTML=deltaPP(k.cur,k.prv));
+    setEl('kpi-funnel-'+k.id+'-sub',  el=>el.textContent=k.sub);
   });
   const lbl=document.getElementById('funnel-fin-mtd-label');
-  if (lbl) lbl.textContent=periodLabel;
+  if(lbl) lbl.textContent=periodLabel;
 
-  // ── Time-series ───────────────────────────────────────────────────────
-  const timeMap = aggByTime(rawFunnelFin,    'semana', emptyB, addB);
-  const vtaMap  = aggByTime(rawFunnelFinVta, 'semana', emptyV, addV);
-  const allKeys = [...new Set([...Object.keys(timeMap),...Object.keys(vtaMap)])].sort();
-  const xlabels = gran==='mensual'
-    ? allKeys.map(k=>{ const [y,m]=k.split('-'); return m+'/'+y.slice(2); })
-    : allKeys.map(k=>k.slice(5).replace('-','/'));
-
-  function seriesF(map,fn) {
-    return allKeys.map(k=>{ const m=map[k]; if(!m) return null; const v=fn(m); return v!=null?+v.toFixed(2):null; });
+  // Time series
+  const timeMap=aggByTime(rawFunnelFin,   'semana',emptyB,addB);
+  const vtaMap =aggByTime(rawFunnelFinVta,'semana',emptyV,addV);
+  const allKeys=[...new Set([...Object.keys(timeMap),...Object.keys(vtaMap)])].sort();
+  const xlabels=gran==='mensual'
+    ?allKeys.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);})
+    :allKeys.map(k=>k.slice(5).replace('-','/'));
+  function seriesF(map,fn){
+    return allKeys.map(k=>{const m=map[k];if(!m)return null;const v=fn(m);return v!=null?+v.toFixed(2):null;});
   }
+  const cmap={total:{ho:'#1a3a5c',app:'#2980b9',vta:'#27ae60'},sin_ti:{ho:'#2980b9',app:'#3498db',vta:'#2ecc71'},con_ti:{ho:'#e67e22',app:'#d35400',vta:'#c0392b'}};
+  const cols=cmap[tiMode]||cmap.total;
+  const modeLabel=tiMode==='sin_ti'?'Sin TI':tiMode==='con_ti'?'Con TI':'Total';
 
-  const colorMap = {total:{ho:'#1a3a5c',app:'#2980b9',vta:'#27ae60'},sin_ti:{ho:'#2980b9',app:'#3498db',vta:'#2ecc71'},con_ti:{ho:'#e67e22',app:'#d35400',vta:'#c0392b'}};
-  const cols = colorMap[tiMode]||colorMap.total;
-  const modeLabel = tiMode==='sin_ti'?'Sin TI':tiMode==='con_ti'?'Con TI':'Total';
-
-  [{chartKey:'funnel-ho',  map:timeMap, col:cols.ho,  fn:m=>crFn(m.ho, m.ho +m.cnh)},
-   {chartKey:'funnel-app', map:timeMap, col:cols.app, fn:m=>crFn(m.app,m.app+m.cna)},
-   {chartKey:'funnel-vta', map:vtaMap,  col:cols.vta, fn:m=>crFn(m.vta,m.vta+m.can)},
-  ].forEach(def => {
+  [{chartKey:'funnel-ho', map:timeMap,col:cols.ho, fn:m=>crFn(m.ho, m.ho +m.cnh)},
+   {chartKey:'funnel-app',map:timeMap,col:cols.app,fn:m=>crFn(m.app,m.app+m.cna)},
+   {chartKey:'funnel-vta',map:vtaMap, col:cols.vta,fn:m=>crFn(m.vta,m.vta+m.can)},
+  ].forEach(def=>{
     destroyChart(def.chartKey);
-    const canvas=document.getElementById('chart-'+def.chartKey);
-    if (!canvas) return;
-    charts[def.chartKey]=new Chart(canvas,{type:'line',data:{labels:xlabels,datasets:[{
-      label:modeLabel, data:seriesF(def.map,def.fn),
-      borderColor:def.col, backgroundColor:def.col+'22', borderWidth:2.5,
-      pointRadius:2, pointHoverRadius:4, tension:0.3, spanGaps:true, fill:false,
+    const cv=document.getElementById('chart-'+def.chartKey); if(!cv) return;
+    charts[def.chartKey]=new Chart(cv,{type:'line',data:{labels:xlabels,datasets:[{
+      label:modeLabel,data:seriesF(def.map,def.fn),
+      borderColor:def.col,backgroundColor:def.col+'22',borderWidth:2.5,
+      pointRadius:2,pointHoverRadius:4,tension:0.3,spanGaps:true,fill:false,
     }]},options:{responsive:true,maintainAspectRatio:false,plugins:{
       legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},
       datalabels:{display:false},
@@ -3391,97 +3476,103 @@ function renderFunnelFin() {
 }
 
 function renderFunnelSLA() {
-  if (!rawFunnelSLA||rawFunnelSLA.length===0) return;
+  if(!rawFunnelSLA||rawFunnelSLA.length===0) return;
   const hub    = currentHub;
   const gran   = currentGran;
   const tiMode = currentFunnelTI;
 
   function filterRows(rows) {
-    return rows.filter(r => {
-      if (hub!=='__MX__' && r.hub!==hub) return false;
-      if (tiMode!=='total' && r.ti_flag!==tiMode) return false;
+    return rows.filter(r=>{
+      if(hub!=='__MX__'&&r.hub!==hub) return false;
+      if(tiMode!=='total'&&r.ti_flag!==tiMode) return false;
       return true;
     });
   }
-  function wAvg(rows, slaKey, cntKey) {
-    let sw=0, swv=0;
-    rows.forEach(r=>{ const w=r[cntKey]||0; const v=r[slaKey]; if(v!=null&&w>0){sw+=w;swv+=w*v;} });
-    return sw>0 ? swv/sw : null;
+  function wAvg(rows,sk,ck) {
+    let sw=0,swv=0;
+    rows.forEach(r=>{const w=r[ck]||0;const v=r[sk];if(v!=null&&w>0){sw+=w;swv+=w*v;}});
+    return sw>0?swv/sw:null;
   }
 
-  // Period detection
-  const _tod=new Date(); _tod.setHours(0,0,0,0);
-  const _dow=_tod.getDay();
-  const _mon=new Date(_tod); _mon.setDate(_tod.getDate()-(_dow===0?6:_dow-1));
-  const _monISO=_mon.toISOString().slice(0,10);
-  const _sems=[...new Set(rawFunnelSLA.map(r=>r.semana))].sort();
-  const _closed=_sems.filter(s=>s<_monISO);
-  const _lastW=_closed[_closed.length-1]||'';
-  const _curW=_sems.find(s=>s>=_monISO)||_lastW;
+  const P = _funnelPeriod(rawFunnelSLA,'semana');
 
-  let curRows, prvRows, _vsLbl;
-  if (gran==='mensual') {
-    const cm=_tod.toISOString().slice(0,7);
-    const pm=new Date(_tod.getFullYear(),_tod.getMonth()-1,1).toISOString().slice(0,7);
-    curRows=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===cm));
-    prvRows=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===pm));
-    _vsLbl='vs mes ant';
+  // KPI: siempre usa última semana COMPLETA vs la anterior (evita WTD parcial)
+  const curRows = filterRows(rawFunnelSLA.filter(r=>r.semana===P.lastW));
+  const prvRows = filterRows(rawFunnelSLA.filter(r=>r.semana===P.prevW));
+  let periodLabel,_vsLbl;
+  if(gran==='mensual'){
+    // Para mensual usamos MTD vs mes anterior
+    const cm=P.curMonth, pm=P.prevMonth;
+    const curRowsM=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===cm));
+    const prvRowsM=filterRows(rawFunnelSLA.filter(r=>r.semana.slice(0,7)===pm));
+    periodLabel='MTD'; _vsLbl='vs mes ant';
+    renderSLAKPIs(curRowsM,prvRowsM,'MTD vs mes ant','vs mes ant',wAvg);
   } else {
-    curRows=filterRows(rawFunnelSLA.filter(r=>r.semana===_curW));
-    prvRows=filterRows(rawFunnelSLA.filter(r=>r.semana===_lastW));
-    _vsLbl='vs sem ant';
+    periodLabel='Última sem'; _vsLbl='vs sem ant';
+    renderSLAKPIs(curRows,prvRows,'Última sem completa vs anterior','vs sem ant',wAvg);
   }
 
-  function fmtD(v)  { return v!=null?v.toFixed(1)+'d':'—'; }
-  function dDay(c,p,lbl) {
+  // Trend charts — 3 separados
+  const SLA_DEFS = [
+    {chartKey:'sla-ho',  slaKey:'sla_res_ho',  cntKey:'n_ho',  col:'#1a3a5c', label:'Res→HO días'},
+    {chartKey:'sla-app', slaKey:'sla_res_app', cntKey:'n_app', col:'#2980b9', label:'Res→App días'},
+    {chartKey:'sla-vta', slaKey:'sla_app_vta', cntKey:'n_vta', col:'#27ae60', label:'App→Vta días'},
+  ];
+
+  SLA_DEFS.forEach(def=>{
+    const tmap={};
+    filterRows(rawFunnelSLA).forEach(r=>{
+      const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
+      if(!tmap[key])tmap[key]={n:0,wt:0};
+      if(r[def.slaKey]!=null&&(r[def.cntKey]||0)>0){
+        tmap[key].wt+=r[def.slaKey]*(r[def.cntKey]||0);
+        tmap[key].n +=r[def.cntKey]||0;
+      }
+    });
+    const allK=Object.keys(tmap).sort();
+    const xlbls=gran==='mensual'
+      ?allK.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);})
+      :allK.map(k=>k.slice(5).replace('-','/'));
+    const data=allK.map(k=>tmap[k].n>0?+(tmap[k].wt/tmap[k].n).toFixed(1):null);
+
+    destroyChart(def.chartKey);
+    const cv=document.getElementById('chart-'+def.chartKey); if(!cv) return;
+    charts[def.chartKey]=new Chart(cv,{type:'line',data:{labels:xlbls,datasets:[{
+      label:def.label,data,
+      borderColor:def.col,backgroundColor:def.col+'22',borderWidth:2.5,
+      pointRadius:2,pointHoverRadius:4,tension:0.3,spanGaps:true,fill:false,
+    }]},options:{responsive:true,maintainAspectRatio:false,plugins:{
+      legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},
+      datalabels:{display:false},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(1)+'d':'—'}`}}
+    },scales:{
+      x:{ticks:{font:{size:9},maxRotation:45}},
+      y:{min:0,ticks:{callback:v=>v+'d',font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
+    }}});
+  });
+}
+
+function renderSLAKPIs(curRows,prvRows,periodLabel,vsLbl,wAvg) {
+  function fmtD(v) { return v!=null?v.toFixed(1)+'d':'—'; }
+  function dDay(c,p) {
     if(c==null||p==null) return '';
     const d=c-p; const cls=d<=0?'delta-up':'delta-down';
-    return `<span class="${cls}">${d>=0?'+':''}${d.toFixed(1)}d ${lbl}</span>`;
+    return `<span class="${cls}">${d>=0?'+':''}${d.toFixed(1)}d ${vsLbl}</span>`;
   }
   const setEl=(id,fn)=>{const el=document.getElementById(id);if(el)fn(el);};
   [{id:'res-ho', sk:'sla_res_ho', ck:'n_ho'},
    {id:'res-app',sk:'sla_res_app',ck:'n_app'},
    {id:'app-vta',sk:'sla_app_vta',ck:'n_vta'},
   ].forEach(k=>{
-    const c=wAvg(curRows,k.sk,k.ck), p=wAvg(prvRows,k.sk,k.ck);
+    const c=wAvg(curRows,k.sk,k.ck),p=wAvg(prvRows,k.sk,k.ck);
     setEl('kpi-sla-'+k.id+'-val',  el=>el.textContent=fmtD(c));
-    setEl('kpi-sla-'+k.id+'-delta',el=>el.innerHTML=dDay(c,p,_vsLbl));
+    setEl('kpi-sla-'+k.id+'-delta',el=>el.innerHTML=dDay(c,p));
+    setEl('kpi-sla-'+k.id+'-sub',  el=>el.textContent=periodLabel);
   });
-
-  // Trend chart — group by time period (weighted avg across hubs)
-  const tmap={};
-  filterRows(rawFunnelSLA).forEach(r=>{
-    const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
-    if(!tmap[key]) tmap[key]={n_ho:0,n_app:0,n_vta:0,wt_rho:0,wt_rapp:0,wt_avta:0};
-    const m=tmap[key];
-    if(r.sla_res_ho !=null&&r.n_ho >0){m.wt_rho +=r.sla_res_ho *r.n_ho; m.n_ho +=r.n_ho;}
-    if(r.sla_res_app!=null&&r.n_app>0){m.wt_rapp+=r.sla_res_app*r.n_app;m.n_app+=r.n_app;}
-    if(r.sla_app_vta!=null&&r.n_vta>0){m.wt_avta+=r.sla_app_vta*r.n_vta;m.n_vta+=r.n_vta;}
-  });
-  const allK=Object.keys(tmap).sort();
-  const xlbls=gran==='mensual'
-    ?allK.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);})
-    :allK.map(k=>k.slice(5).replace('-','/'));
-  function sv(m,wk,ck){return m[ck]>0?+(m[wk]/m[ck]).toFixed(1):null;}
-
-  destroyChart('sla-etapa');
-  const cv=document.getElementById('chart-sla-etapa'); if(!cv) return;
-  charts['sla-etapa']=new Chart(cv,{type:'line',data:{labels:xlbls,datasets:[
-    {label:'Res→HO', data:allK.map(k=>sv(tmap[k],'wt_rho','n_ho')),   borderColor:'#1a3a5c',backgroundColor:'#1a3a5c22',borderWidth:2.5,pointRadius:2,tension:0.3,spanGaps:true,fill:false},
-    {label:'Res→App',data:allK.map(k=>sv(tmap[k],'wt_rapp','n_app')), borderColor:'#2980b9',backgroundColor:'#2980b922',borderWidth:2.5,pointRadius:2,tension:0.3,spanGaps:true,fill:false},
-    {label:'App→Vta',data:allK.map(k=>sv(tmap[k],'wt_avta','n_vta')), borderColor:'#27ae60',backgroundColor:'#27ae6022',borderWidth:2.5,pointRadius:2,tension:0.3,spanGaps:true,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{
-    legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},
-    datalabels:{display:false},
-    tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(1)+'d':'—'}`}}
-  },scales:{
-    x:{ticks:{font:{size:9},maxRotation:45}},
-    y:{min:0,ticks:{callback:v=>v+'d',font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
-  }}});
 }
 
 function renderFunnelDictamen() {
-  if (!rawDictamen||rawDictamen.length===0) return;
+  if(!rawDictamen||rawDictamen.length===0) return;
   const hub    = currentHub;
   const gran   = currentGran;
   const tiMode = currentFunnelTI;
@@ -3494,29 +3585,21 @@ function renderFunnelDictamen() {
     });
   }
 
-  // KPI % Aprobada — current period
-  const _tod=new Date(); _tod.setHours(0,0,0,0);
-  const _dow=_tod.getDay();
-  const _mon=new Date(_tod); _mon.setDate(_tod.getDate()-(_dow===0?6:_dow-1));
-  const _monISO=_mon.toISOString().slice(0,10);
-  const _sems=[...new Set(rawDictamen.map(r=>r.semana))].sort();
-  const _closed=_sems.filter(s=>s<_monISO);
-  const _lastW=_closed[_closed.length-1]||'';
-  const _curW=_sems.find(s=>s>=_monISO)||_lastW;
+  const P = _funnelPeriod(rawDictamen,'semana');
 
+  // KPI: % Aprobada período activo
   let kpiRows;
   if(gran==='mensual'){
-    const cm=_tod.toISOString().slice(0,7);
-    kpiRows=filterRows(rawDictamen.filter(r=>r.semana.slice(0,7)===cm));
+    kpiRows=filterRows(rawDictamen.filter(r=>r.semana.slice(0,7)===P.curMonth));
   } else {
-    kpiRows=filterRows(rawDictamen.filter(r=>r.semana===_curW));
+    kpiRows=filterRows(rawDictamen.filter(r=>r.semana===P.curW));
   }
   const totN=kpiRows.reduce((s,r)=>s+(r.n||0),0);
   const aprN=kpiRows.filter(r=>r.dictamen==='Aprobada').reduce((s,r)=>s+(r.n||0),0);
   const kpiEl=document.getElementById('kpi-dict-aprobada');
   if(kpiEl) kpiEl.textContent=totN>0?(aprN/totN*100).toFixed(1)+'%':'—';
 
-  // Stacked bar (% composition)
+  // Stacked bar % por período
   const CATS=['Aprobada','Incompleta','Rechazada','Condicionada','En proceso','Sin dictamen','Otro'];
   const COLORS={'Aprobada':'#27ae60','Incompleta':'#f39c12','Rechazada':'#e74c3c',
                 'Condicionada':'#9b59b6','En proceso':'#3498db','Sin dictamen':'#95a5a6','Otro':'#bdc3c7'};
@@ -3548,7 +3631,17 @@ function renderFunnelDictamen() {
     label:cat,data:pctD(cat),backgroundColor:COLORS[cat]||'#bdc3c7',stack:'dict',
   }))},options:{responsive:true,maintainAspectRatio:false,plugins:{
     legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10},padding:6}},
-    datalabels:{display:false},
+    datalabels:{
+      display: ctx => {
+        // Solo mostrar % en Aprobada e Incompleta si > 5%
+        const cat = activeCats[ctx.datasetIndex];
+        return (cat==='Aprobada'||cat==='Incompleta') && ctx.dataset.data[ctx.dataIndex] >= 5;
+      },
+      formatter: v => v.toFixed(0)+'%',
+      color: '#fff',
+      font: {size:9, weight:'bold'},
+      anchor:'center', align:'center',
+    },
     tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(1)}%`}}
   },scales:{
     x:{stacked:true,ticks:{font:{size:9},maxRotation:45}},
@@ -3557,7 +3650,7 @@ function renderFunnelDictamen() {
 }
 
 function renderFunnelPerfil() {
-  if (!rawFunnelPerfil||rawFunnelPerfil.length===0) return;
+  if(!rawFunnelPerfil||rawFunnelPerfil.length===0) return;
   const hub    = currentHub;
   const gran   = currentGran;
   const tiMode = currentFunnelTI;
@@ -3570,55 +3663,79 @@ function renderFunnelPerfil() {
     });
   }
 
-  // Period: MTD (mensual) or last 4 complete weeks (semanal/diario)
-  const _tod=new Date(); _tod.setHours(0,0,0,0);
-  const _dow=_tod.getDay();
-  const _mon=new Date(_tod); _mon.setDate(_tod.getDate()-(_dow===0?6:_dow-1));
-  const _monISO=_mon.toISOString().slice(0,10);
-  const _sems=[...new Set(rawFunnelPerfil.map(r=>r.semana))].sort();
-  const _closed=_sems.filter(s=>s<_monISO);
+  const P = _funnelPeriod(rawFunnelPerfil,'semana');
 
-  let kpiRows;
+  // Build time keys — últimas 7 semanas (semanal/diario) o últimos 4 meses (mensual)
+  let timeKeys;
   if(gran==='mensual'){
-    const cm=_tod.toISOString().slice(0,7);
-    kpiRows=filterRows(rawFunnelPerfil.filter(r=>r.semana.slice(0,7)===cm));
+    // últimos 4 meses
+    const allMonths=[...new Set(rawFunnelPerfil.map(r=>r.semana.slice(0,7)))].sort();
+    timeKeys=allMonths.slice(-4);
   } else {
-    const last4=_closed.slice(-4);
-    kpiRows=filterRows(rawFunnelPerfil.filter(r=>last4.includes(r.semana)));
+    // últimas 7 semanas completas
+    timeKeys=P.closed.slice(-7);
   }
 
-  // Aggregate by perfil
+  function crFn(n,d){return d>0?+(n/d*100).toFixed(1):null;}
+
   const PERFILES=['X','A','B','C'];
-  const bkts={};
-  PERFILES.forEach(p=>bkts[p]={n_total:0,n_ho:0,n_app:0,n_vta:0});
-  kpiRows.forEach(r=>{
-    if(!bkts[r.perfil]) return;
-    bkts[r.perfil].n_total+=r.n_total||0;
-    bkts[r.perfil].n_ho   +=r.n_ho   ||0;
-    bkts[r.perfil].n_app  +=r.n_app  ||0;
-    bkts[r.perfil].n_vta  +=r.n_vta  ||0;
+  const COLORS={'X':'#1a3a5c','A':'#2980b9','B':'#8e44ad','C':'#e67e22'};
+
+  PERFILES.forEach(perfil=>{
+    const col=COLORS[perfil]||'#1a3a5c';
+
+    // Build time-bucketed aggregates for this perfil
+    const bktMap={};
+    timeKeys.forEach(k=>bktMap[k]={n_total:0,n_ho:0,n_app:0,n_vta:0});
+
+    filterRows(rawFunnelPerfil).filter(r=>r.perfil===perfil).forEach(r=>{
+      const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
+      if(!bktMap[key]) return; // outside our time window
+      bktMap[key].n_total+=r.n_total||0;
+      bktMap[key].n_ho   +=r.n_ho   ||0;
+      bktMap[key].n_app  +=r.n_app  ||0;
+      bktMap[key].n_vta  +=r.n_vta  ||0;
+    });
+
+    const xlbls=gran==='mensual'
+      ?timeKeys.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);})
+      :timeKeys.map(k=>k.slice(5).replace('-','/'));
+
+    const crHO  = timeKeys.map(k=>crFn(bktMap[k].n_ho, bktMap[k].n_total));
+    const crApp = timeKeys.map(k=>crFn(bktMap[k].n_app,bktMap[k].n_total));
+    const crVta = timeKeys.map(k=>crFn(bktMap[k].n_vta,bktMap[k].n_app));
+
+    const chartSpecs=[
+      {metric:'ho',  data:crHO,  label:'CR Res→HO'},
+      {metric:'app', data:crApp, label:'CR Res→App'},
+      {metric:'vta', data:crVta, label:'CR App→Vta'},
+    ];
+
+    chartSpecs.forEach(spec=>{
+      const chartKey=`perfil-${perfil}-${spec.metric}`;
+      destroyChart(chartKey);
+      const cv=document.getElementById('chart-'+chartKey); if(!cv) return;
+      charts[chartKey]=new Chart(cv,{type:'line',data:{labels:xlbls,datasets:[{
+        label:spec.label,
+        data:spec.data,
+        borderColor:col,backgroundColor:col+'22',borderWidth:2,
+        pointRadius:3,pointHoverRadius:5,tension:0.3,spanGaps:true,fill:false,
+      }]},options:{responsive:true,maintainAspectRatio:false,plugins:{
+        legend:{display:false},
+        datalabels:{
+          display:true,
+          formatter:v=>v!=null?v.toFixed(0)+'%':'',
+          color:col, font:{size:8,weight:'bold'},
+          anchor:'end',align:'top',offset:-2,
+          clip:false,
+        },
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(1)+'%':'—'}`}}
+      },scales:{
+        x:{ticks:{font:{size:8},maxRotation:45}},
+        y:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:8}},grid:{color:'rgba(0,0,0,0.05)'}}
+      }}});
+    });
   });
-
-  function cr(num,den){ return den>0?+(num/den*100).toFixed(1):null; }
-  const crResHO  = PERFILES.map(p=>cr(bkts[p].n_ho, bkts[p].n_total));
-  const crResApp = PERFILES.map(p=>cr(bkts[p].n_app,bkts[p].n_total));
-  const crAppVta = PERFILES.map(p=>cr(bkts[p].n_vta,bkts[p].n_app));
-
-  destroyChart('perfil-cr');
-  const cv=document.getElementById('chart-perfil-cr'); if(!cv) return;
-  charts['perfil-cr']=new Chart(cv,{type:'bar',data:{labels:PERFILES,datasets:[
-    {label:'CR Res→HO',  data:crResHO,  backgroundColor:'#1a3a5c'},
-    {label:'CR Res→App', data:crResApp, backgroundColor:'#2980b9'},
-    {label:'CR App→Vta', data:crAppVta, backgroundColor:'#27ae60'},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{
-    legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}},
-    datalabels:{display:true,anchor:'end',align:'top',offset:-2,font:{size:9,weight:'bold'},
-      formatter:v=>v!=null?v.toFixed(0)+'%':'', color:'#444'},
-    tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(1)+'%':'—'}`}}
-  },scales:{
-    x:{ticks:{font:{size:11}}},
-    y:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'}}
-  }}});
 }
 // ── END FUNNEL FIN JS ───────────────────────────────────────────────────────
 
