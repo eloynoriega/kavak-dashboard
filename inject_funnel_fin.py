@@ -129,10 +129,10 @@ sla_html = """
               <div class="chart-wrap" style="height:175px;"><canvas id="chart-sla-ho"></canvas></div>
             </div>
 
-            <!-- Res→App -->
+            <!-- HO→App -->
             <div>
               <div class="kpi-card" style="border-left-color:#2980b9; margin-bottom:10px;">
-                <div class="kpi-label">Res → Aprobada</div>
+                <div class="kpi-label">HO → Aprobación</div>
                 <div class="kpi-value" id="kpi-sla-res-app-val">—</div>
                 <div class="kpi-delta" id="kpi-sla-res-app-delta"></div>
                 <div class="kpi-sub" id="kpi-sla-res-app-sub">días promedio</div>
@@ -140,10 +140,10 @@ sla_html = """
               <div class="chart-wrap" style="height:175px;"><canvas id="chart-sla-app"></canvas></div>
             </div>
 
-            <!-- App→Vta -->
+            <!-- Res→Vta -->
             <div>
               <div class="kpi-card" style="border-left-color:#27ae60; margin-bottom:10px;">
-                <div class="kpi-label">Aprobada → Venta</div>
+                <div class="kpi-label">Res → Venta Declarada</div>
                 <div class="kpi-value" id="kpi-sla-app-vta-val">—</div>
                 <div class="kpi-delta" id="kpi-sla-app-vta-delta"></div>
                 <div class="kpi-sub" id="kpi-sla-app-vta-sub">días promedio</div>
@@ -152,7 +152,7 @@ sla_html = """
             </div>
 
           </div>
-          <div style="font-size:10px; color:#6b7fa3; margin-top:6px;">SLA por semana de <b>reserva</b> · Financing · b2b=0 · estimate_flag=1 · KPI = última semana completa</div>
+          <div style="font-size:10px; color:#6b7fa3; margin-top:6px;">Cohort por semana del evento (HO / Aprobación / Venta) · Financing · b2b=0 · estimate_flag=1</div>
         </div>
 """ if HAS_SLA else ""
 
@@ -495,9 +495,9 @@ function renderFunnelSLA() {
     }
   }
 
-  const kH = getKpiRows(rawSLAHO, PH,'sla_res_ho','n_ho');
-  const kA = getKpiRows(rawSLAApp,PA,'sla_res_app','n_app');
-  const kV = getKpiRows(rawSLAVta,PV,'sla_app_vta','n_vta');
+  const kH = getKpiRows(rawSLAHO, PH,'sla_res_ho', 'n_ho');
+  const kA = getKpiRows(rawSLAApp,PA,'sla_ho_app', 'n_app');
+  const kV = getKpiRows(rawSLAVta,PV,'sla_res_vta','n_vta');
 
   renderSLAKPIs(
     [{id:'res-ho', cur:kH.cur, prv:kH.prv},
@@ -508,9 +508,9 @@ function renderFunnelSLA() {
 
   // Trend charts — 3 separados, cada uno con su propio dataset y semana
   const SLA_DEFS = [
-    {chartKey:'sla-ho',  dataset:rawSLAHO,  slaKey:'sla_res_ho',  cntKey:'n_ho',  col:'#1a3a5c', label:'Res→HO (por sem de HO)'},
-    {chartKey:'sla-app', dataset:rawSLAApp, slaKey:'sla_res_app', cntKey:'n_app', col:'#2980b9', label:'Res→App (por sem de aprobación)'},
-    {chartKey:'sla-vta', dataset:rawSLAVta, slaKey:'sla_app_vta', cntKey:'n_vta', col:'#27ae60', label:'App→Vta (por sem de venta)'},
+    {chartKey:'sla-ho',  dataset:rawSLAHO,  slaKey:'sla_res_ho', cntKey:'n_ho',  col:'#1a3a5c', label:'Res→HO (sem de HO)'},
+    {chartKey:'sla-app', dataset:rawSLAApp, slaKey:'sla_ho_app', cntKey:'n_app', col:'#2980b9', label:'HO→Aprobación (sem de aprobación)'},
+    {chartKey:'sla-vta', dataset:rawSLAVta, slaKey:'sla_res_vta',cntKey:'n_vta', col:'#27ae60', label:'Res→Venta Declarada (sem de venta)'},
   ];
 
   SLA_DEFS.forEach(def=>{
