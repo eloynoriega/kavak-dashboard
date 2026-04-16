@@ -493,6 +493,12 @@ function renderFunnelSLA() {
   SLA_DEFS.forEach(def=>{
     const tmap={};
     filterRows(rawFunnelSLA).forEach(r=>{
+      // Excluir semana/mes en curso (parcial) — mismo principio que cohort
+      if(gran==='mensual'){
+        if(r.semana.slice(0,7)>=P.curMonth) return;
+      } else {
+        if(r.semana>=P.monISO) return; // excluir semana en curso
+      }
       const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
       if(!tmap[key])tmap[key]={n:0,wt:0};
       if(r[def.slaKey]!=null&&(r[def.cntKey]||0)>0){
