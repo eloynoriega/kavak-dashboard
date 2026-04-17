@@ -677,7 +677,7 @@ function renderFunnelPerfil() {
 
     // Build time-bucketed aggregates for this perfil
     const bktMap={};
-    timeKeys.forEach(k=>bktMap[k]={n_total:0,n_ho:0,n_app:0,n_vta:0});
+    timeKeys.forEach(k=>bktMap[k]={n_total:0,n_ho:0,n_app:0,n_vta:0,n_cva:0});
 
     filterRows(rawFunnelPerfil).filter(r=>r.perfil===perfil).forEach(r=>{
       const key=gran==='mensual'?r.semana.slice(0,7):r.semana;
@@ -686,6 +686,7 @@ function renderFunnelPerfil() {
       bktMap[key].n_ho   +=r.n_ho   ||0;
       bktMap[key].n_app  +=r.n_app  ||0;
       bktMap[key].n_vta  +=r.n_vta  ||0;
+      bktMap[key].n_cva  +=r.n_cancel_after_app||0;
     });
 
     const xlbls=gran==='mensual'
@@ -694,7 +695,8 @@ function renderFunnelPerfil() {
 
     const crHO  = timeKeys.map(k=>crFn(bktMap[k].n_ho, bktMap[k].n_total));
     const crApp = timeKeys.map(k=>crFn(bktMap[k].n_app,bktMap[k].n_total));
-    const crVta = timeKeys.map(k=>crFn(bktMap[k].n_vta,bktMap[k].n_app));
+    // CR App→Vta: solo bookings resueltos (vta + cancel_after_app), igual que funnel general
+    const crVta = timeKeys.map(k=>crFn(bktMap[k].n_vta, bktMap[k].n_vta+bktMap[k].n_cva));
 
     const chartSpecs=[
       {metric:'ho',  data:crHO,  label:'CR Res→HO'},
