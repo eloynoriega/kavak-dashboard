@@ -201,7 +201,7 @@ perfil_html = ("""
     + perfil_col('C', 'Más restrictivo',  '#e67e22')
     + """
           </div>
-          <div style="font-size:10px; color:#6b7fa3; margin-top:8px;">Semanal: últimas 7 sem · Mensual: últimos 4 meses · CR por semana de reserva · Financing · b2b=0 · estimate_flag=1</div>
+          <div style="font-size:10px; color:#6b7fa3; margin-top:8px;">Semanal: 6 sem cerradas + WTD · Mensual: últimos 4 meses · CR por semana de reserva · Financing · b2b=0 · estimate_flag=1</div>
         </div>
 """) if HAS_PERFIL else ""
 
@@ -662,8 +662,9 @@ function renderFunnelPerfil() {
     const allMonths=[...new Set(rawFunnelPerfil.map(r=>r.semana.slice(0,7)))].sort();
     timeKeys=allMonths.slice(-4);
   } else {
-    // últimas 7 semanas completas
-    timeKeys=P.closed.slice(-7);
+    // últimas 6 semanas cerradas + semana en curso (WTD)
+    const wtdKey = P.curW || P.lastW;
+    timeKeys=[...P.closed.slice(-6), wtdKey].filter((v,i,a)=>v&&a.indexOf(v)===i);
   }
 
   function crFn(n,d){return d>0?+(n/d*100).toFixed(1):null;}

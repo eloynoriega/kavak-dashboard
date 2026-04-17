@@ -36,21 +36,21 @@ run_safe() {
 
 # ── 1. Fetch datos (paralelo, dim_str al final para evitar cancelación) ──────
 echo "── Fetching datos desde Redshift ──"
-( timeout 300 python3 "$DIR/fetch_backlog_summary.py"  >> "$LOG" 2>&1 ) & PID1=$!
-( timeout 300 python3 "$DIR/fetch_sla_drilldown.py"   >> "$LOG" 2>&1 ) & PID2=$!
-( timeout 300 python3 "$DIR/fetch_cohort_str.py"      >> "$LOG" 2>&1 ) & PID3=$!
-( timeout 300 python3 "$DIR/fetch_cohort_entrega.py"  >> "$LOG" 2>&1 ) & PID4=$!
-( timeout 300 python3 "$DIR/fetch_cancel_motivos.py"  >> "$LOG" 2>&1 ) & PID5=$!
-( timeout 300 python3 "$DIR/fetch_sla_cierre.py"      >> "$LOG" 2>&1 ) & PID6=$!
-( timeout 300 python3 "$DIR/fetch_str_tradein.py"     >> "$LOG" 2>&1 ) & PID7=$!
-( timeout 300 python3 "$DIR/fetch_sla_delivery.py"    >> "$LOG" 2>&1 ) & PID8=$!
-( timeout 300 python3 "$DIR/fetch_str_kpis.py"        >> "$LOG" 2>&1 ) & PID9=$!
-( timeout 300 python3 "$DIR/fetch_funnel_fin.py"             >> "$LOG" 2>&1 ) & PID10=$!
-( timeout 300 python3 "$DIR/fetch_funnel_sla_dictamen.py"    >> "$LOG" 2>&1 ) & PID11=$!
+( python3 "$DIR/fetch_backlog_summary.py"         >> "$LOG" 2>&1 ) & PID1=$!
+( python3 "$DIR/fetch_sla_drilldown.py"          >> "$LOG" 2>&1 ) & PID2=$!
+( python3 "$DIR/fetch_cohort_str.py"             >> "$LOG" 2>&1 ) & PID3=$!
+( python3 "$DIR/fetch_cohort_entrega.py"         >> "$LOG" 2>&1 ) & PID4=$!
+( python3 "$DIR/fetch_cancel_motivos.py"         >> "$LOG" 2>&1 ) & PID5=$!
+( python3 "$DIR/fetch_sla_cierre.py"             >> "$LOG" 2>&1 ) & PID6=$!
+( python3 "$DIR/fetch_str_tradein.py"            >> "$LOG" 2>&1 ) & PID7=$!
+( python3 "$DIR/fetch_sla_delivery.py"           >> "$LOG" 2>&1 ) & PID8=$!
+( python3 "$DIR/fetch_str_kpis.py"               >> "$LOG" 2>&1 ) & PID9=$!
+( python3 "$DIR/fetch_funnel_fin.py"             >> "$LOG" 2>&1 ) & PID10=$!
+( python3 "$DIR/fetch_funnel_sla_dictamen.py"    >> "$LOG" 2>&1 ) & PID11=$!
 
-# NPS con timeout de 180s — si falla, el JSON anterior se mantiene en /tmp
+# NPS — si falla, el JSON anterior se mantiene en /tmp
 echo "▶ fetch_nps (corre en serie — query pesada)..."
-( timeout 180 python3 "$DIR/fetch_nps.py" >> "$LOG" 2>&1 ) \
+( python3 "$DIR/fetch_nps.py" >> "$LOG" 2>&1 ) \
   && echo "  ✅ NPS OK" \
   || echo "  ⚠️  NPS: timeout/error — se usará rawNPS.json cacheado si existe"
 
