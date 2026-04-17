@@ -303,6 +303,7 @@
 
 
 
+
 <!-- FUNNEL FIN SECTION -->
       <div class="card" style="padding:16px; grid-column: 1 / -1;">
 
@@ -801,6 +802,7 @@ const rawSLA = [{"semana_entrega":"2025-09-01","hub":"CDMX - Antara Fashion Hall
 let currentHub  = '__MX__';
 let currentGran = 'semanal';
 let currentCohortType = 'fin';
+let currentCancelMethod = 'Financing';
 const charts = {};
 
 // ═══════════════════════════════════════════════════════════
@@ -3312,6 +3314,8 @@ if (!items.length) {
 panel.style.display = 'block';
 panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
+
+
 
 
 // ── FUNNEL FIN JS ──────────────────────────────────────────────────────────
