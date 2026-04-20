@@ -1683,12 +1683,31 @@ function renderDimTables() {
   }
 
   function buildMixTable(title, rows) {
+    // Deep-copy to avoid mutating rawDimSTR on repeated renders
+    const rowsCopy = rows.map(r => ({...r}));
+
+    // Largest-remainder fix: Mix% rows must sum to exactly 100 per time key
+    const mixIdxs = rowsCopy.map((r,i) => r.dim.includes('Mix') ? i : -1).filter(i => i >= 0);
+    if (mixIdxs.length > 1) {
+      const fixKeys = [...timeKeys];
+      if (!isMonthly) fixKeys.push('wtd', 'lwtd');
+      fixKeys.forEach(wk => {
+        const vals = mixIdxs.map(i => rowsCopy[i][wk]);
+        if (vals.some(v => v == null)) return;
+        const floored = vals.map(v => Math.floor(v));
+        const deficit  = 100 - floored.reduce((a, b) => a + b, 0);
+        const order    = vals.map((v, i) => ({i, rem: v - floored[i]})).sort((a,b) => b.rem - a.rem);
+        order.slice(0, Math.max(0, deficit)).forEach(({i}) => floored[i]++);
+        mixIdxs.forEach((rowIdx, j) => { rowsCopy[rowIdx][wk] = floored[j]; });
+      });
+    }
+
     const header = `<tr style="background:#0a2540;color:white;">
       <th style="padding:6px 8px;text-align:left;font-size:10px;min-width:80px;">Dimensión</th>
       ${tLabels.map(w=>`<th style="padding:5px 3px;text-align:center;font-size:9px;white-space:nowrap;">${w}</th>`).join('')}
       ${extraHeaders}
     </tr>`;
-    const body = rows.map((r,i) => {
+    const body = rowsCopy.map((r,i) => {
       const isMix = r.dim.includes('Mix');
       let extraCells;
       if (isMonthly) {
