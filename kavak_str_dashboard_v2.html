@@ -1734,13 +1734,13 @@ function renderDimTables() {
 
   const m = method;
   document.getElementById('dim-tables-wrap').innerHTML =
-    `<div style="grid-column:span 2;">${buildTable('Por Región', isMonthly ? rawDimSTR.monthly_region[m] : rawDimSTR.region[m])}</div>` +
-    buildMixTable('Por Aging del Inventario (días en catálogo)', isMonthly ? rawDimSTR.monthly_aging[m]   : rawDimSTR.aging[m]) +
-    buildMixTable('Por Ticket / Precio',                         isMonthly ? rawDimSTR.monthly_precio[m]  : rawDimSTR.precio[m]) +
-    buildMixTable('Coming Soon vs Sin Coming Soon (STR + Mix%)', isMonthly ? rawDimSTR.monthly_cs_flag[m] : rawDimSTR.cs_flag[m]) +
-    buildMixTable('Con Pago vs Sin Pago (STR + Mix%)',           isMonthly ? rawDimSTR.monthly_sin_pago[m]: rawDimSTR.sin_pago[m]) +
-    buildMixTable('Por Buckets de PIX',                          isMonthly ? rawDimSTR.monthly_pix[m]     : rawDimSTR.pix[m]) +
-    buildTable('Por Región del Stock (hub del auto)',             isMonthly ? rawDimSTR.monthly_stock_region[m] : rawDimSTR.stock_region[m]);
+    buildTable('Por Región (hub de reserva)',                     isMonthly ? rawDimSTR.monthly_region[m]       : rawDimSTR.region[m]) +
+    buildTable('Por Región del Stock (hub del auto)',             isMonthly ? rawDimSTR.monthly_stock_region[m] : rawDimSTR.stock_region[m]) +
+    buildMixTable('Por Aging del Inventario (días en catálogo)', isMonthly ? rawDimSTR.monthly_aging[m]        : rawDimSTR.aging[m]) +
+    buildMixTable('Por Ticket / Precio',                         isMonthly ? rawDimSTR.monthly_precio[m]       : rawDimSTR.precio[m]) +
+    buildMixTable('Coming Soon vs Sin Coming Soon (STR + Mix%)', isMonthly ? rawDimSTR.monthly_cs_flag[m]      : rawDimSTR.cs_flag[m]) +
+    buildMixTable('Con Pago vs Sin Pago (STR + Mix%)',           isMonthly ? rawDimSTR.monthly_sin_pago[m]     : rawDimSTR.sin_pago[m]) +
+    buildMixTable('Por Buckets de PIX',                          isMonthly ? rawDimSTR.monthly_pix[m]          : rawDimSTR.pix[m]);
 }
 // ═══════════════════════════════════════════════════════════
 // CHART: SLA DE CIERRE — 3 variantes (General / Sin TI / Con TI)
