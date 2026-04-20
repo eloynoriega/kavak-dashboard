@@ -19,7 +19,8 @@ import json
 from collections import defaultdict
 from datetime import date, timedelta
 
-WEEKS_START = '2026-02-16'
+WEEKS_START  = '2026-02-16'
+MONTHS_START = '2026-01-01'
 
 # ─── Date logic ───────────────────────────────────────────────────────────────
 today      = date.today()
@@ -211,6 +212,111 @@ def pivot_with_mix(rows, dim_key, all_weeks, lwtd_agg):
             method_rows.append(mix_row)
         result[target] = method_rows
     return result, closed_weeks
+
+
+# ─── Monthly pivot helpers ────────────────────────────────────────────────────
+def pivot_monthly_with_mix(rows, dim_key, month_keys):
+    """
+    Same as pivot_with_mix but grouped by month (YYYY-MM) instead of week.
+    MoM Δ = last two month_keys comparison.
+    WTD / LWTD / delta are set to None (not applicable for monthly).
+    """
+    agg = defaultdict(lambda: [0, 0])
+    dims_seen = []
+    for r in rows:
+        dim = r.get(dim_key) or r.get('_dim')
+        if dim is None:
+            continue
+        method = r.get('metodo_de_pago') or 'all'
+        mes    = str(r['semana'])[:7]   # 'YYYY-MM' from any date-like field
+        v      = int(r.get('ventas') or 0)
+        c      = int(r.get('cancelaciones') or 0)
+        agg[(method, dim, mes)][0] += v
+        agg[(method, dim, mes)][1] += c
+        if method in ('Financing', 'Cash payment'):
+            agg[('all', dim, mes)][0] += v
+            agg[('all', dim, mes)][1] += c
+        if dim not in dims_seen:
+            dims_seen.append(dim)
+
+    result = {}
+    for target in ['all', 'Financing', 'Cash payment']:
+        method_rows = []
+        for dim in dims_seen:
+            # ── STR row ──────────────────────────────────────────────────
+            str_row = {'dim': f'{dim} — STR'}
+            for mk in month_keys:
+                v, c = agg[(target, dim, mk)]
+                str_row[mk] = str_pct(v, c)
+            # MoM Δ (last 2 months)
+            str_row['wow_delta'] = None
+            if len(month_keys) >= 2:
+                str_row['wow_delta'] = delta_pp(str_row.get(month_keys[-1]),
+                                                str_row.get(month_keys[-2]))
+            str_row['wtd']   = None
+            str_row['lwtd']  = None
+            str_row['delta'] = None
+            method_rows.append(str_row)
+
+            # ── Mix% row ─────────────────────────────────────────────────
+            mix_row = {'dim': f'{dim} — Mix%', 'wow_delta': None,
+                       'wtd': None, 'lwtd': None, 'delta': None}
+            for mk in month_keys:
+                v_d, c_d = agg[(target, dim, mk)]
+                total = sum(agg[(target, d2, mk)][0] + agg[(target, d2, mk)][1]
+                            for d2 in dims_seen)
+                mix_row[mk] = round((v_d + c_d) / total * 100, 1) if total else None
+            method_rows.append(mix_row)
+        result[target] = method_rows
+    return result
+
+
+def pivot_monthly_plain(rows, dim_key, month_keys, dims_override=None):
+    """
+    Same as pivot_plain but grouped by month (YYYY-MM).
+    MoM Δ = last two month_keys comparison.
+    WTD / LWTD / delta are set to None.
+    """
+    agg = defaultdict(lambda: [0, 0])
+    dims_seen = []
+    for r in rows:
+        dim = r.get(dim_key) or r.get('_dim')
+        if dim is None:
+            continue
+        method = r.get('metodo_de_pago') or 'all'
+        mes    = str(r['semana'])[:7]
+        v      = int(r.get('ventas') or 0)
+        c      = int(r.get('cancelaciones') or 0)
+        agg[(method, dim, mes)][0] += v
+        agg[(method, dim, mes)][1] += c
+        if method in ('Financing', 'Cash payment'):
+            agg[('all', dim, mes)][0] += v
+            agg[('all', dim, mes)][1] += c
+        if dim not in dims_seen:
+            dims_seen.append(dim)
+
+    if dims_override:
+        dims_seen = dims_override
+
+    result = {}
+    for target in ['all', 'Financing', 'Cash payment']:
+        method_rows = []
+        for dim in dims_seen:
+            row = {'dim': dim}
+            for mk in month_keys:
+                v, c = agg[(target, dim, mk)]
+                row[mk] = str_pct(v, c)
+            # MoM Δ (last 2 months)
+            row['wow_delta'] = None
+            if len(month_keys) >= 2:
+                row['wow_delta'] = delta_pp(row.get(month_keys[-1]),
+                                            row.get(month_keys[-2]))
+            row['wtd']   = None
+            row['lwtd']  = None
+            row['delta'] = None
+            method_rows.append(row)
+        result[target] = method_rows
+    return result
 
 
 # ─── 1. REGIÓN ────────────────────────────────────────────────────────────────
@@ -489,6 +595,149 @@ GROUP BY 1, 2
 print(f"  → pago={len(df_pago)} lwtd_pago={len(df_pago_lwtd)}")
 
 
+# ─── 6. PIX ───────────────────────────────────────────────────────────────────
+print("Fetching PIX...")
+PIX_CASE = """
+  CASE
+    WHEN h.pix < 0.88  THEN '< 0.88'
+    WHEN h.pix < 0.93  THEN '0.88-0.93'
+    WHEN h.pix < 0.98  THEN '0.93-0.98'
+    ELSE '≥ 0.98'
+  END
+"""
+PIX_ORDER = ['< 0.88', '0.88-0.93', '0.93-0.98', '≥ 0.98']
+
+df_pix = execute_query(f"""
+WITH pixed AS (
+  SELECT
+    DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {PIX_CASE} AS pix_bucket,
+    b.fecha_venta_declarada,
+    b.fecha_cancelacion_reserva,
+    b.estimate_flag
+  FROM serving.bookings_history b
+  JOIN serving.mvp_retail_stock_history h
+    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
+    AND h.inventory_date = b.fecha_reserva
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+    AND h.pix IS NOT NULL
+)
+SELECT
+  semana, metodo_de_pago, pix_bucket,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)   AS cancelaciones
+FROM pixed
+GROUP BY 1, 2, 3
+ORDER BY 1, 2,
+  CASE pix_bucket WHEN '< 0.88' THEN 1 WHEN '0.88-0.93' THEN 2 WHEN '0.93-0.98' THEN 3 ELSE 4 END
+""")
+
+df_pix_lwtd = execute_query(f"""
+SELECT
+  b.metodo_de_pago,
+  {PIX_CASE} AS pix_bucket,
+  COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
+FROM serving.bookings_history b
+JOIN serving.mvp_retail_stock_history h
+  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
+  AND h.inventory_date = b.fecha_reserva
+WHERE b.b2b = 0
+  AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
+  AND (b.fecha_venta_declarada IS NOT NULL
+       OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+  AND h.pix IS NOT NULL
+GROUP BY 1, 2
+""")
+print(f"  → pix={len(df_pix)} lwtd_pix={len(df_pix_lwtd)}")
+
+
+# ─── 7. REGIÓN DEL STOCK (hub del auto al momento de reserva) ────────────────
+print("Fetching REGIÓN DEL STOCK...")
+STOCK_REGION_VEL_CTE = """
+WITH vel AS (
+  SELECT stock_region, inv_date, bk_stock
+  FROM serving.dl_catalog_inventory_velocity
+  WHERE stock_region IN ('CDMX','GUADALAJARA','MONTERREY','PUEBLA','QUERETARO','CUERNAVACA')
+  GROUP BY 1, 2, 3
+),
+civ2 AS (
+  SELECT stock_region, bk_stock
+  FROM (
+    SELECT stock_region, bk_stock,
+           ROW_NUMBER() OVER(PARTITION BY bk_stock ORDER BY inv_date DESC) AS rn
+    FROM vel
+  ) WHERE rn = 1
+)
+"""
+STOCK_REGION_CASE = """
+  CASE
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'CDMX'        THEN 'CDMX'
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'GUADALAJARA' THEN 'GDL'
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'MONTERREY'   THEN 'MTY'
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'PUEBLA'      THEN 'PUE'
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'QUERETARO'   THEN 'QRO'
+    WHEN COALESCE(c0.stock_region, c1.stock_region, c2.stock_region) = 'CUERNAVACA'  THEN 'CUE'
+    ELSE NULL
+  END
+"""
+
+df_stock_region = execute_query(f"""
+{STOCK_REGION_VEL_CTE},
+base AS (
+  SELECT
+    DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {STOCK_REGION_CASE} AS sr,
+    CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
+    CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
+  FROM serving.bookings_history b
+  LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
+  LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
+  LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+)
+SELECT semana, metodo_de_pago, sr AS stock_region,
+       SUM(venta) AS ventas, SUM(cancel) AS cancelaciones
+FROM base
+WHERE sr IS NOT NULL
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3
+""")
+
+df_stock_region_lwtd = execute_query(f"""
+{STOCK_REGION_VEL_CTE},
+base AS (
+  SELECT
+    b.metodo_de_pago,
+    {STOCK_REGION_CASE} AS sr,
+    CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
+    CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
+  FROM serving.bookings_history b
+  LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
+  LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
+  LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+)
+SELECT metodo_de_pago, sr AS stock_region,
+       SUM(venta) AS ventas, SUM(cancel) AS cancelaciones
+FROM base
+WHERE sr IS NOT NULL
+GROUP BY 1, 2
+""")
+print(f"  → stock_region={len(df_stock_region)} lwtd_stock_region={len(df_stock_region_lwtd)}")
+
+
 # ─── Build weeks list ─────────────────────────────────────────────────────────
 all_weeks = sorted(df_mx['semana'].astype(str).unique().tolist())
 # Ensure WTD_KEY is present (if current week has data)
@@ -514,6 +763,14 @@ lwtd_aging   = build_lwtd_agg(df_to_records(df_aging_lwtd), 'aging_bucket')
 lwtd_precio  = build_lwtd_agg(df_to_records(df_precio_lwtd), 'precio_bucket')
 lwtd_cs      = build_lwtd_agg(df_to_records(df_cs_lwtd), 'cs_dim')
 lwtd_pago    = build_lwtd_agg(df_to_records(df_pago_lwtd), 'pago_dim')
+lwtd_pix          = build_lwtd_agg(df_to_records(df_pix_lwtd), 'pix_bucket')
+lwtd_stock_region = build_lwtd_agg(
+    [{'metodo_de_pago': r['metodo_de_pago'], 'stock_region': 'MX',
+      'ventas': r['ventas'], 'cancelaciones': r['cancelaciones']}
+     for r in df_to_records(df_mx_lwtd)]
+    + df_to_records(df_stock_region_lwtd),
+    'stock_region'
+)
 
 
 # ─── Build pivots ─────────────────────────────────────────────────────────────
@@ -533,6 +790,252 @@ aging_pivot,  _  = pivot_with_mix(df_to_records(df_aging),  'aging_bucket', all_
 precio_pivot, _  = pivot_with_mix(df_to_records(df_precio), 'precio_bucket', all_weeks, lwtd_precio)
 cs_pivot,     _  = pivot_with_mix(df_to_records(df_cs),  'cs_dim',       all_weeks, lwtd_cs)
 pago_pivot,   _  = pivot_with_mix(df_to_records(df_pago),   'pago_dim',     all_weeks, lwtd_pago)
+pix_pivot,    _  = pivot_with_mix(df_to_records(df_pix),    'pix_bucket',   all_weeks, lwtd_pix)
+
+combined_stock_region_weekly = (
+    [{'semana': r['semana'], 'metodo_de_pago': r['metodo_de_pago'], '_dim': 'MX',
+      'ventas': r['ventas'], 'cancelaciones': r['cancelaciones']}
+     for r in df_to_records(df_mx)]
+    + [{**r, '_dim': r['stock_region']} for r in df_to_records(df_stock_region)]
+)
+stock_region_pivot, _ = pivot_plain(combined_stock_region_weekly, '_dim', all_weeks, lwtd_stock_region,
+                                    dims_override=['MX','CDMX','CUE','GDL','MTY','PUE','QRO'])
+
+
+# ─── Month keys (last 4 calendar months up to current month) ──────────────────
+month_keys = []
+y, m = today.year, today.month
+for _ in range(4):
+    month_keys.append(f"{y}-{m:02d}")
+    m -= 1
+    if m == 0:
+        m = 12
+        y -= 1
+month_keys.reverse()
+print(f"\nMonth keys: {month_keys}")
+
+
+# ─── Monthly queries ──────────────────────────────────────────────────────────
+print("Fetching monthly REGIÓN...")
+df_region_monthly = execute_query(f"""
+SELECT
+  DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
+  metodo_de_pago,
+  {REGION_CASE} AS region,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
+FROM serving.bookings_history
+WHERE b2b = 0
+  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
+  AND (fecha_venta_declarada IS NOT NULL
+       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
+GROUP BY 1, 2, 3
+HAVING region IS NOT NULL
+ORDER BY 1, 2, 3
+""")
+
+df_mx_monthly = execute_query(f"""
+SELECT
+  DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
+  metodo_de_pago,
+  'MX' AS region,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
+FROM serving.bookings_history
+WHERE b2b = 0
+  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
+  AND (fecha_venta_declarada IS NOT NULL
+       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3
+""")
+print(f"  → region_monthly={len(df_region_monthly)} mx_monthly={len(df_mx_monthly)}")
+
+print("Fetching monthly AGING...")
+df_aging_monthly = execute_query(f"""
+{AGING_CTE},
+aged AS (
+  SELECT
+    DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {AGING_CASE} AS aging_bucket,
+    b.fecha_venta_declarada,
+    b.fecha_cancelacion_reserva,
+    b.estimate_flag
+  FROM serving.bookings_history b
+  JOIN first_inv fi ON CAST(b.stock AS BIGINT)::varchar = fi.bk_stock
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+    AND fi.item_receipt_date IS NOT NULL
+)
+SELECT
+  semana, metodo_de_pago, aging_bucket,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)   AS cancelaciones
+FROM aged
+GROUP BY 1, 2, 3
+ORDER BY 1, 2,
+  CASE aging_bucket WHEN '0-30d' THEN 1 WHEN '30-60d' THEN 2 WHEN '60-90d' THEN 3 ELSE 4 END
+""")
+print(f"  → aging_monthly={len(df_aging_monthly)}")
+
+print("Fetching monthly PRECIO...")
+df_precio_monthly = execute_query(f"""
+WITH priced AS (
+  SELECT
+    DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {PRECIO_CASE} AS precio_bucket,
+    b.fecha_venta_declarada,
+    b.fecha_cancelacion_reserva,
+    b.estimate_flag
+  FROM serving.bookings_history b
+  JOIN serving.mvp_retail_stock_history h
+    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
+    AND h.inventory_date = b.fecha_reserva
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+    AND h.real_published_price IS NOT NULL
+)
+SELECT
+  semana, metodo_de_pago, precio_bucket,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)   AS cancelaciones
+FROM priced
+GROUP BY 1, 2, 3
+ORDER BY 1, 2,
+  CASE precio_bucket WHEN '0-250K' THEN 1 WHEN '250-350K' THEN 2 WHEN '350-500K' THEN 3 ELSE 4 END
+""")
+print(f"  → precio_monthly={len(df_precio_monthly)}")
+
+print("Fetching monthly COMING SOON...")
+df_cs_monthly = execute_query(f"""
+SELECT
+  DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+  b.metodo_de_pago,
+  CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
+  COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
+FROM serving.bookings_history b
+JOIN serving.mvp_retail_stock_history h
+  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
+  AND h.inventory_date = b.fecha_reserva
+WHERE b.b2b = 0
+  AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
+  AND (b.fecha_venta_declarada IS NOT NULL
+       OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3
+""")
+print(f"  → cs_monthly={len(df_cs_monthly)}")
+
+print("Fetching monthly CON/SIN PAGO...")
+df_pago_monthly = execute_query(f"""
+SELECT
+  DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
+  metodo_de_pago,
+  CASE WHEN reserva_con_pago = 1 THEN 'Con Pago' ELSE 'Sin Pago' END AS pago_dim,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
+FROM serving.bookings_history
+WHERE b2b = 0
+  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
+  AND (fecha_venta_declarada IS NOT NULL
+       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3
+""")
+print(f"  → pago_monthly={len(df_pago_monthly)}")
+
+print("Fetching monthly PIX...")
+df_pix_monthly = execute_query(f"""
+WITH pixed AS (
+  SELECT
+    DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {PIX_CASE} AS pix_bucket,
+    b.fecha_venta_declarada,
+    b.fecha_cancelacion_reserva,
+    b.estimate_flag
+  FROM serving.bookings_history b
+  JOIN serving.mvp_retail_stock_history h
+    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
+    AND h.inventory_date = b.fecha_reserva
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+    AND h.pix IS NOT NULL
+)
+SELECT
+  semana, metodo_de_pago, pix_bucket,
+  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
+  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)   AS cancelaciones
+FROM pixed
+GROUP BY 1, 2, 3
+ORDER BY 1, 2,
+  CASE pix_bucket WHEN '< 0.88' THEN 1 WHEN '0.88-0.93' THEN 2 WHEN '0.93-0.98' THEN 3 ELSE 4 END
+""")
+print(f"  → pix_monthly={len(df_pix_monthly)}")
+
+print("Fetching monthly REGIÓN DEL STOCK...")
+df_stock_region_monthly = execute_query(f"""
+{STOCK_REGION_VEL_CTE},
+base AS (
+  SELECT
+    DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
+    b.metodo_de_pago,
+    {STOCK_REGION_CASE} AS sr,
+    CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
+    CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
+  FROM serving.bookings_history b
+  LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
+  LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
+  LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
+  WHERE b.b2b = 0
+    AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
+    AND (b.fecha_venta_declarada IS NOT NULL
+         OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
+)
+SELECT semana, metodo_de_pago, sr AS stock_region,
+       SUM(venta) AS ventas, SUM(cancel) AS cancelaciones
+FROM base
+WHERE sr IS NOT NULL
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 3
+""")
+print(f"  → stock_region_monthly={len(df_stock_region_monthly)}")
+
+
+# ─── Monthly pivots ───────────────────────────────────────────────────────────
+print("\nBuilding monthly pivots...")
+
+combined_region_monthly = (
+    [{'semana': r['semana'], 'metodo_de_pago': r['metodo_de_pago'], '_dim': 'MX',
+      'ventas': r['ventas'], 'cancelaciones': r['cancelaciones']}
+     for r in df_to_records(df_mx_monthly)]
+    + [{**r, '_dim': r['region']} for r in df_to_records(df_region_monthly)]
+)
+monthly_region_pivot = pivot_monthly_plain(combined_region_monthly, '_dim', month_keys,
+                                           dims_override=['MX','CDMX','CUE','GDL','MTY','PUE','QRO'])
+monthly_aging_pivot  = pivot_monthly_with_mix(df_to_records(df_aging_monthly),  'aging_bucket', month_keys)
+monthly_precio_pivot = pivot_monthly_with_mix(df_to_records(df_precio_monthly), 'precio_bucket', month_keys)
+monthly_cs_pivot     = pivot_monthly_with_mix(df_to_records(df_cs_monthly),     'cs_dim',        month_keys)
+monthly_pago_pivot   = pivot_monthly_with_mix(df_to_records(df_pago_monthly),   'pago_dim',      month_keys)
+monthly_pix_pivot    = pivot_monthly_with_mix(df_to_records(df_pix_monthly),    'pix_bucket',    month_keys)
+
+combined_stock_region_monthly = (
+    [{'semana': r['semana'], 'metodo_de_pago': r['metodo_de_pago'], '_dim': 'MX',
+      'ventas': r['ventas'], 'cancelaciones': r['cancelaciones']}
+     for r in df_to_records(df_mx_monthly)]
+    + [{**r, '_dim': r['stock_region']} for r in df_to_records(df_stock_region_monthly)]
+)
+monthly_stock_region_pivot = pivot_monthly_plain(combined_stock_region_monthly, '_dim', month_keys,
+                                                 dims_override=['MX','CDMX','CUE','GDL','MTY','PUE','QRO'])
 
 
 # ─── Output ───────────────────────────────────────────────────────────────────
@@ -546,6 +1049,16 @@ output = {
     'precio':      precio_pivot,
     'cs_flag':     cs_pivot,
     'sin_pago':    pago_pivot,
+    'pix':         pix_pivot,
+    'months':               month_keys,
+    'monthly_region':       monthly_region_pivot,
+    'monthly_aging':        monthly_aging_pivot,
+    'monthly_precio':       monthly_precio_pivot,
+    'monthly_cs_flag':      monthly_cs_pivot,
+    'monthly_sin_pago':     monthly_pago_pivot,
+    'monthly_pix':          monthly_pix_pivot,
+    'stock_region':         stock_region_pivot,
+    'monthly_stock_region': monthly_stock_region_pivot,
 }
 
 out_path = '/tmp/rawDimSTR_v2.json'
