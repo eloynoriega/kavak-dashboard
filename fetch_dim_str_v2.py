@@ -339,7 +339,7 @@ SELECT
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{WEEKS_START}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -356,7 +356,7 @@ SELECT
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{WEEKS_START}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -372,7 +372,7 @@ SELECT
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -387,7 +387,7 @@ SELECT
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -402,7 +402,7 @@ print("Fetching AGING...")
 AGING_CTE = """
 WITH first_inv AS (
   SELECT bk_stock, MIN(item_receipt_date) AS item_receipt_date
-  FROM serving.dl_catalog_inventory_velocity_s01
+  FROM prd_datamx_serving.serving.catalog_inventory_velocity
   WHERE item_receipt_date IS NOT NULL
   GROUP BY bk_stock
 )
@@ -425,8 +425,8 @@ aged AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN first_inv fi ON CAST(b.stock AS BIGINT)::varchar = fi.bk_stock
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN first_inv fi ON CAST(b.stock AS BIGINT) = fi.bk_stock
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
@@ -450,8 +450,8 @@ SELECT
   {AGING_CASE} AS aging_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN first_inv fi ON CAST(b.stock AS BIGINT)::varchar = fi.bk_stock
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN first_inv fi ON CAST(b.stock AS BIGINT) = fi.bk_stock
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (b.fecha_venta_declarada IS NOT NULL
@@ -481,10 +481,10 @@ WITH priced AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN serving.mvp_retail_stock_history h
-    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-    AND h.inventory_date = b.fecha_reserva
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+    ON CAST(b.stock AS BIGINT) = h.bk_stock
+    AND h.inv_date = b.fecha_reserva
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
@@ -507,10 +507,10 @@ SELECT
   {PRECIO_CASE} AS precio_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN serving.mvp_retail_stock_history h
-  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-  AND h.inventory_date = b.fecha_reserva
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+  ON CAST(b.stock AS BIGINT) = h.bk_stock
+  AND h.inv_date = b.fecha_reserva
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (b.fecha_venta_declarada IS NOT NULL
@@ -530,10 +530,10 @@ SELECT
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN serving.mvp_retail_stock_history h
-  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-  AND h.inventory_date = b.fecha_reserva
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+  ON CAST(b.stock AS BIGINT) = h.bk_stock
+  AND h.inv_date = b.fecha_reserva
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
   AND (b.fecha_venta_declarada IS NOT NULL
@@ -548,10 +548,10 @@ SELECT
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN serving.mvp_retail_stock_history h
-  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-  AND h.inventory_date = b.fecha_reserva
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+  ON CAST(b.stock AS BIGINT) = h.bk_stock
+  AND h.inv_date = b.fecha_reserva
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (b.fecha_venta_declarada IS NOT NULL
@@ -561,47 +561,26 @@ GROUP BY 1, 2
 print(f"  → cs={len(df_cs)} lwtd_cs={len(df_cs_lwtd)}")
 
 
-# ─── 5. CON/SIN PAGO ──────────────────────────────────────────────────────────
-print("Fetching CON/SIN PAGO...")
-df_pago = execute_query(f"""
-SELECT
-  DATE_TRUNC('week', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
-  CASE WHEN reserva_con_pago = 1 THEN 'Con Pago' ELSE 'Sin Pago' END AS pago_dim,
-  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
-  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
-WHERE b2b = 0
-  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{WEEKS_START}'
-  AND (fecha_venta_declarada IS NOT NULL
-       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
-GROUP BY 1, 2, 3
-ORDER BY 1, 2, 3
-""")
-
-df_pago_lwtd = execute_query(f"""
-SELECT
-  metodo_de_pago,
-  CASE WHEN reserva_con_pago = 1 THEN 'Con Pago' ELSE 'Sin Pago' END AS pago_dim,
-  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
-  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
-WHERE b2b = 0
-  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
-  AND (fecha_venta_declarada IS NOT NULL
-       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
-GROUP BY 1, 2
-""")
-print(f"  → pago={len(df_pago)} lwtd_pago={len(df_pago_lwtd)}")
+# ─── 5. CON/SIN PAGO ── PENDIENTE ─────────────────────────────────────────────
+# TODO: Necesita acceso a tabla de pagos de reserva (aún no identificada en Databricks).
+# La lógica correcta es: booking con primer pago >= 1,000 MXN → Con Pago, sino Sin Pago.
+# fecha_confirmado IS NOT NULL da STR ~99% (incorrecto — captura llegada al hub, no pago).
+# second_payments_aux es de compras (supply), no aplica.
+print("CON/SIN PAGO → PENDIENTE (sin acceso a tabla de pagos), usando DataFrame vacío")
+import pandas as _pd
+_pago_cols = ['semana', 'metodo_de_pago', 'pago_dim', 'ventas', 'cancelaciones']
+df_pago      = _pd.DataFrame(columns=_pago_cols)
+df_pago_lwtd = _pd.DataFrame(columns=['metodo_de_pago', 'pago_dim', 'ventas', 'cancelaciones'])
+print(f"  → pago=0 lwtd_pago=0 (pendiente)")
 
 
 # ─── 6. PIX ───────────────────────────────────────────────────────────────────
 print("Fetching PIX...")
 PIX_CASE = """
   CASE
-    WHEN h.pix < 0.88  THEN '< 0.88'
-    WHEN h.pix < 0.93  THEN '0.88-0.93'
-    WHEN h.pix < 0.98  THEN '0.93-0.98'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.88  THEN '< 0.88'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.93  THEN '0.88-0.93'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.98  THEN '0.93-0.98'
     ELSE '≥ 0.98'
   END
 """
@@ -616,15 +595,15 @@ WITH pixed AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN serving.mvp_retail_stock_history h
-    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-    AND h.inventory_date = b.fecha_reserva
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+    ON CAST(b.stock AS BIGINT) = h.bk_stock
+    AND h.inv_date = b.fecha_reserva
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{WEEKS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
          OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
-    AND h.pix IS NOT NULL
+    AND (h.pix_financing IS NOT NULL OR h.pix_cash IS NOT NULL)
 )
 SELECT
   semana, metodo_de_pago, pix_bucket,
@@ -642,15 +621,15 @@ SELECT
   {PIX_CASE} AS pix_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN serving.mvp_retail_stock_history h
-  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-  AND h.inventory_date = b.fecha_reserva
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+  ON CAST(b.stock AS BIGINT) = h.bk_stock
+  AND h.inv_date = b.fecha_reserva
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) BETWEEN '{LWTD_START}' AND '{LWTD_END}'
   AND (b.fecha_venta_declarada IS NOT NULL
        OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
-  AND h.pix IS NOT NULL
+  AND (h.pix_financing IS NOT NULL OR h.pix_cash IS NOT NULL)
 GROUP BY 1, 2
 """)
 print(f"  → pix={len(df_pix)} lwtd_pix={len(df_pix_lwtd)}")
@@ -661,7 +640,7 @@ print("Fetching REGIÓN DEL STOCK...")
 STOCK_REGION_VEL_CTE = """
 WITH vel AS (
   SELECT stock_region, inv_date, bk_stock
-  FROM serving.dl_catalog_inventory_velocity
+  FROM prd_datamx_serving.serving.catalog_inventory_velocity
   WHERE stock_region IN ('CDMX','GUADALAJARA','MONTERREY','PUEBLA','QUERETARO','CUERNAVACA')
   GROUP BY 1, 2, 3
 ),
@@ -695,7 +674,7 @@ base AS (
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
-  FROM serving.bookings_history b
+  FROM prd_datamx_serving.serving.bookings_history b
   LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
   LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
   LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
@@ -720,7 +699,7 @@ base AS (
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
-  FROM serving.bookings_history b
+  FROM prd_datamx_serving.serving.bookings_history b
   LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
   LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
   LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
@@ -824,7 +803,7 @@ SELECT
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -841,7 +820,7 @@ SELECT
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
   AND (fecha_venta_declarada IS NOT NULL
@@ -862,8 +841,8 @@ aged AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN first_inv fi ON CAST(b.stock AS BIGINT)::varchar = fi.bk_stock
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN first_inv fi ON CAST(b.stock AS BIGINT) = fi.bk_stock
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
@@ -891,10 +870,10 @@ WITH priced AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN serving.mvp_retail_stock_history h
-    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-    AND h.inventory_date = b.fecha_reserva
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+    ON CAST(b.stock AS BIGINT) = h.bk_stock
+    AND h.inv_date = b.fecha_reserva
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
@@ -920,10 +899,10 @@ SELECT
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
-FROM serving.bookings_history b
-JOIN serving.mvp_retail_stock_history h
-  ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-  AND h.inventory_date = b.fecha_reserva
+FROM prd_datamx_serving.serving.bookings_history b
+JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+  ON CAST(b.stock AS BIGINT) = h.bk_stock
+  AND h.inv_date = b.fecha_reserva
 WHERE b.b2b = 0
   AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
   AND (b.fecha_venta_declarada IS NOT NULL
@@ -933,23 +912,8 @@ ORDER BY 1, 2, 3
 """)
 print(f"  → cs_monthly={len(df_cs_monthly)}")
 
-print("Fetching monthly CON/SIN PAGO...")
-df_pago_monthly = execute_query(f"""
-SELECT
-  DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
-  CASE WHEN reserva_con_pago = 1 THEN 'Con Pago' ELSE 'Sin Pago' END AS pago_dim,
-  COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
-  COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
-FROM serving.bookings_history
-WHERE b2b = 0
-  AND COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva) >= '{MONTHS_START}'
-  AND (fecha_venta_declarada IS NOT NULL
-       OR (fecha_cancelacion_reserva IS NOT NULL AND estimate_flag = 1))
-GROUP BY 1, 2, 3
-ORDER BY 1, 2, 3
-""")
-print(f"  → pago_monthly={len(df_pago_monthly)}")
+print("monthly CON/SIN PAGO → PENDIENTE")
+df_pago_monthly = _pd.DataFrame(columns=['semana', 'metodo_de_pago', 'pago_dim', 'ventas', 'cancelaciones'])
 
 print("Fetching monthly PIX...")
 df_pix_monthly = execute_query(f"""
@@ -961,15 +925,15 @@ WITH pixed AS (
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
     b.estimate_flag
-  FROM serving.bookings_history b
-  JOIN serving.mvp_retail_stock_history h
-    ON CAST(b.stock AS BIGINT)::varchar = h.stock_id
-    AND h.inventory_date = b.fecha_reserva
+  FROM prd_datamx_serving.serving.bookings_history b
+  JOIN prd_datamx_serving.serving.catalog_inventory_velocity h
+    ON CAST(b.stock AS BIGINT) = h.bk_stock
+    AND h.inv_date = b.fecha_reserva
   WHERE b.b2b = 0
     AND COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva) >= '{MONTHS_START}'
     AND (b.fecha_venta_declarada IS NOT NULL
          OR (b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1))
-    AND h.pix IS NOT NULL
+    AND (h.pix_financing IS NOT NULL OR h.pix_cash IS NOT NULL)
 )
 SELECT
   semana, metodo_de_pago, pix_bucket,
@@ -992,7 +956,7 @@ base AS (
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
-  FROM serving.bookings_history b
+  FROM prd_datamx_serving.serving.bookings_history b
   LEFT JOIN vel c0 ON c0.bk_stock = CAST(b.stock AS BIGINT) AND c0.inv_date = b.fecha_reserva::date
   LEFT JOIN vel c1 ON c1.bk_stock = CAST(b.stock AS BIGINT) AND c1.inv_date = b.fecha_reserva::date - 1
   LEFT JOIN civ2 c2 ON c2.bk_stock = CAST(b.stock AS BIGINT)
