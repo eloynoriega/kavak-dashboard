@@ -33,7 +33,7 @@ lmtd_end     = date(ly, lm, today.day).isoformat()
 print(f"MTD : {mtd_start} -> {yesterday}")
 print(f"LMTD: {lmtd_start} -> {lmtd_end}")
 
-BASE = "b2b=0 AND metodo_de_pago='Financing' AND estimate_flag=1"
+BASE = "b2b=0 AND metodo_de_pago IN ('Financing', 'Financing Kavak') AND estimate_flag=1"
 
 def q_weekly(date_col, alias, d_start, d_end):
     return f"""
@@ -42,7 +42,7 @@ SELECT DATE_TRUNC('week', {date_col})::date AS semana,
        COUNT(DISTINCT booking_id) AS {alias}_total,
        COUNT(DISTINCT CASE WHEN trade_in=0 THEN booking_id END) AS {alias}_sales,
        COUNT(DISTINCT CASE WHEN trade_in=1 THEN booking_id END) AS {alias}_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE} AND {date_col} BETWEEN '{d_start}' AND '{d_end}'
 GROUP BY 1,2 ORDER BY 1,2"""
 
@@ -52,7 +52,7 @@ SELECT reservation_hub_name AS hub,
        COUNT(DISTINCT booking_id) AS {alias}_total,
        COUNT(DISTINCT CASE WHEN trade_in=0 THEN booking_id END) AS {alias}_sales,
        COUNT(DISTINCT CASE WHEN trade_in=1 THEN booking_id END) AS {alias}_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE} AND {date_col} BETWEEN '{d_start}' AND '{d_end}'
 GROUP BY 1 ORDER BY 1"""
 
@@ -72,7 +72,7 @@ SELECT DATE_TRUNC('week', fecha_cancelacion_reserva)::date AS semana,
        COUNT(DISTINCT booking_id) AS {alias}_total,
        COUNT(DISTINCT CASE WHEN trade_in=0 THEN booking_id END) AS {alias}_sales,
        COUNT(DISTINCT CASE WHEN trade_in=1 THEN booking_id END) AS {alias}_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE}
   AND fecha_cancelacion_reserva BETWEEN '{d_start}' AND '{d_end}'
   AND {stage_col} IS NULL
@@ -135,7 +135,7 @@ SELECT
         AND trade_in=0 THEN booking_id END) AS cancel_app_sales,
   COUNT(DISTINCT CASE WHEN fecha_aprobacion IS NOT NULL AND fecha_cancelacion_reserva IS NOT NULL
         AND trade_in=1 THEN booking_id END) AS cancel_app_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE}
   AND (fecha_venta_declarada BETWEEN '{weekly_start}' AND '{yesterday}'
        OR fecha_cancelacion_reserva BETWEEN '{weekly_start}' AND '{yesterday}')
@@ -155,7 +155,7 @@ SELECT reservation_hub_name AS hub,
        COUNT(DISTINCT booking_id) AS {alias}_total,
        COUNT(DISTINCT CASE WHEN trade_in=0 THEN booking_id END) AS {alias}_sales,
        COUNT(DISTINCT CASE WHEN trade_in=1 THEN booking_id END) AS {alias}_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE}
   AND fecha_cancelacion_reserva BETWEEN '{d_start}' AND '{d_end}'
   AND {stage_col} IS NULL
@@ -191,7 +191,7 @@ SELECT reservation_hub_name AS hub,
         AND trade_in=0 THEN booking_id END) AS cancel_app_sales,
   COUNT(DISTINCT CASE WHEN fecha_aprobacion IS NOT NULL AND fecha_cancelacion_reserva IS NOT NULL
         AND trade_in=1 THEN booking_id END) AS cancel_app_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE}
   AND (fecha_venta_declarada BETWEEN '{mtd_start}' AND '{yesterday}'
        OR fecha_cancelacion_reserva BETWEEN '{mtd_start}' AND '{yesterday}')
@@ -232,7 +232,7 @@ SELECT reservation_hub_name AS hub,
         AND trade_in=0 THEN booking_id END) AS cancel_app_sales,
   COUNT(DISTINCT CASE WHEN fecha_aprobacion IS NOT NULL AND fecha_cancelacion_reserva IS NOT NULL
         AND trade_in=1 THEN booking_id END) AS cancel_app_ti
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE {BASE}
   AND (fecha_venta_declarada BETWEEN '{lmtd_start}' AND '{lmtd_end}'
        OR fecha_cancelacion_reserva BETWEEN '{lmtd_start}' AND '{lmtd_end}')
