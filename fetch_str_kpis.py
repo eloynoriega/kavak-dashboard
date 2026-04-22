@@ -124,39 +124,55 @@ for wk in wks[-3:]:
     str_pct = vt/(vt+ct)*100 if (vt+ct) else 0
     print(f"  {wk}: ventas={vt} cancel={ct} STR={str_pct:.1f}%")
 
-# ── 2. rawA_w — Reservas semanales (fecha_origen cohort) ──────────────────────
-# Fórmula validada vs PDF Performance: COUNTUNIQUEIF(id, fecha_origen, b2b=0, estimate_flag=1)
-# SIN filtro metodo_de_pago para reservas_netas (el PDF no lo aplica)
-print("\nFetching rawA_w (reservas by fecha_origen)...")
+# ── 2. rawA_w — Reservas semanales ───────────────────────────────────────────
+# Reservas brutas: fecha_reserva, b2b=0, sin estimate_flag (validado vs PDF Performance)
+# Reservas netas:  fecha_origen,  b2b=0, estimate_flag=1
+print("\nFetching rawA_w (reservas brutas=fecha_reserva / netas=fecha_origen)...")
 
 df_a = execute_query(f"""
 SELECT
   DATE_TRUNC('week', bh.fecha_origen)::date AS semana,
   bh.reservation_hub_name                    AS hub,
-  COUNT(*)                                    AS reservas_total,
-  COUNT(CASE WHEN bh.estimate_flag = 1 THEN 1 END)                                                    AS reservas_netas,
-  COUNT(CASE WHEN bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS reservas_fin,
-  COUNT(CASE WHEN bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS reservas_cash,
-  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)             AS reservas_netas_fin,
-  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)             AS reservas_netas_cash,
+  -- brutas: via subquery join por fecha_reserva
+  COALESCE(rb.reservas_total, 0)             AS reservas_total,
+  COALESCE(rb.reservas_fin,   0)             AS reservas_fin,
+  COALESCE(rb.reservas_cash,  0)             AS reservas_cash,
+  -- netas: fecha_origen + estimate_flag=1
+  COUNT(CASE WHEN bh.estimate_flag = 1 THEN 1 END)                                                 AS reservas_netas,
+  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak') THEN 1 END) AS reservas_netas_fin,
+  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)          AS reservas_netas_cash,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
-              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS ventas_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak') THEN 1 END)                 AS ventas_fin,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
-              AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS ventas_cash,
-  COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL THEN 1 END)                                    AS ventas_total,
+              AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                    AS ventas_cash,
+  COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL THEN 1 END)                                  AS ventas_total,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
-              AND bh.estimate_flag = 1               THEN 1 END)                                      AS cancel_total,
+              AND bh.estimate_flag = 1 THEN 1 END)                                                  AS cancel_total,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
-              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS cancel_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak') THEN 1 END)                 AS cancel_fin,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
-              AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS cancel_cash
+              AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                    AS cancel_cash
 FROM prd_datamx_serving.serving.bookings_history bh
+LEFT JOIN (
+  SELECT
+    DATE_TRUNC('week', fecha_reserva)::date AS semana,
+    reservation_hub_name                    AS hub,
+    COUNT(*)                                AS reservas_total,
+    COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak') THEN 1 END) AS reservas_fin,
+    COUNT(CASE WHEN metodo_de_pago = 'Cash payment' THEN 1 END)                   AS reservas_cash
+  FROM prd_datamx_serving.serving.bookings_history
+  WHERE b2b = 0
+    AND fecha_reserva >= '{weekly_start}'
+    AND fecha_reserva <= '{yesterday}'
+  GROUP BY 1, 2
+) rb ON rb.semana = DATE_TRUNC('week', bh.fecha_origen)::date
+     AND rb.hub   = bh.reservation_hub_name
 WHERE bh.b2b = 0
   AND bh.fecha_origen >= '{weekly_start}'
   AND bh.fecha_origen <= '{yesterday}'
-GROUP BY 1, 2
+GROUP BY 1, 2, rb.reservas_total, rb.reservas_fin, rb.reservas_cash
 ORDER BY 1, 2
 """)
 
