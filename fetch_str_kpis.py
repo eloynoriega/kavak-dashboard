@@ -56,18 +56,18 @@ SELECT
   bh.metodo_de_pago,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL THEN 1 END)                             AS ventas_total,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
-              AND bh.metodo_de_pago = 'Financing'    THEN 1 END)                               AS ventas_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                               AS ventas_fin,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
               AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                               AS ventas_cash,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1               THEN 1 END)                               AS cancel_total,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
-              AND bh.metodo_de_pago = 'Financing'    THEN 1 END)                               AS cancel_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                               AS cancel_fin,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
               AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                               AS cancel_cash
-FROM serving.bookings_history bh
+FROM prd_datamx_serving.serving.bookings_history bh
 WHERE bh.b2b = 0
   AND (
     bh.fecha_venta_declarada IS NOT NULL
@@ -75,7 +75,7 @@ WHERE bh.b2b = 0
   )
   AND COALESCE(bh.fecha_venta_declarada, bh.fecha_cancelacion_reserva) >= '{weekly_start}'
   AND COALESCE(bh.fecha_venta_declarada, bh.fecha_cancelacion_reserva) <= '{yesterday}'
-  AND bh.metodo_de_pago IN ('Financing', 'Cash payment')
+  AND bh.metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1, 2, 3
 ORDER BY 1, 2, 3
 """)
@@ -135,12 +135,12 @@ SELECT
   bh.reservation_hub_name                    AS hub,
   COUNT(*)                                    AS reservas_total,
   COUNT(CASE WHEN bh.estimate_flag = 1 THEN 1 END)                                                    AS reservas_netas,
-  COUNT(CASE WHEN bh.metodo_de_pago = 'Financing'    THEN 1 END)                                      AS reservas_fin,
+  COUNT(CASE WHEN bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS reservas_fin,
   COUNT(CASE WHEN bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS reservas_cash,
-  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago = 'Financing'    THEN 1 END)             AS reservas_netas_fin,
+  COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)             AS reservas_netas_fin,
   COUNT(CASE WHEN bh.estimate_flag = 1 AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)             AS reservas_netas_cash,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
-              AND bh.metodo_de_pago = 'Financing'    THEN 1 END)                                      AS ventas_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS ventas_fin,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
               AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS ventas_cash,
   COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL THEN 1 END)                                    AS ventas_total,
@@ -148,11 +148,11 @@ SELECT
               AND bh.estimate_flag = 1               THEN 1 END)                                      AS cancel_total,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
-              AND bh.metodo_de_pago = 'Financing'    THEN 1 END)                                      AS cancel_fin,
+              AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)                                      AS cancel_fin,
   COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
               AND bh.estimate_flag = 1
               AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)                                      AS cancel_cash
-FROM serving.bookings_history bh
+FROM prd_datamx_serving.serving.bookings_history bh
 WHERE bh.b2b = 0
   AND bh.fecha_origen >= '{weekly_start}'
   AND bh.fecha_origen <= '{yesterday}'
@@ -208,7 +208,7 @@ SELECT
   COUNT(CASE WHEN bh.perfil = 'C'   THEN 1 END)                                 AS n_c,
   COUNT(CASE WHEN bh.perfil = 'Z_R' THEN 1 END)                                 AS n_zr,
   COUNT(CASE WHEN bh.perfil IS NULL OR bh.perfil = 'Revisar' THEN 1 END)        AS n_sin_perfil
-FROM serving.bookings_history bh
+FROM prd_datamx_serving.serving.bookings_history bh
 WHERE bh.b2b = 0
   AND bh.estimate_flag = 1
   AND bh.fecha_origen >= '{weekly_start}'
@@ -302,14 +302,14 @@ def fetch_period(start, end, label):
       -- ventas/cancel by CLOSE DATE
       COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL THEN 1 END)      AS ventas_total,
       COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
-                  AND bh.metodo_de_pago = 'Financing'    THEN 1 END)        AS ventas_fin,
+                  AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)        AS ventas_fin,
       COUNT(CASE WHEN bh.fecha_venta_declarada IS NOT NULL
                   AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)        AS ventas_cash,
       COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
                   AND bh.estimate_flag = 1               THEN 1 END)        AS cancel_total,
       COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
                   AND bh.estimate_flag = 1
-                  AND bh.metodo_de_pago = 'Financing'    THEN 1 END)        AS cancel_fin,
+                  AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)        AS cancel_fin,
       COUNT(CASE WHEN bh.fecha_cancelacion_reserva IS NOT NULL
                   AND bh.estimate_flag = 1
                   AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)        AS cancel_cash,
@@ -320,9 +320,9 @@ def fetch_period(start, end, label):
       0                                                                      AS reservas_netas,
       0                                                                      AS reservas_netas_fin,
       0                                                                      AS reservas_netas_cash
-    FROM serving.bookings_history bh
+    FROM prd_datamx_serving.serving.bookings_history bh
     WHERE bh.b2b = 0
-      AND bh.metodo_de_pago IN ('Financing', 'Cash payment')
+      AND bh.metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
       AND (
         bh.fecha_venta_declarada IS NOT NULL
         OR (bh.fecha_cancelacion_reserva IS NOT NULL AND bh.estimate_flag = 1)
@@ -340,14 +340,14 @@ def fetch_period(start, end, label):
       0 AS cancel_total, 0 AS cancel_fin, 0 AS cancel_cash,
       -- reservas: fecha_origen cohort, SIN filtro metodo_de_pago (fórmula PDF validada)
       COUNT(*)                                                               AS reservas_total,
-      COUNT(CASE WHEN bh.metodo_de_pago = 'Financing'    THEN 1 END)        AS reservas_fin,
+      COUNT(CASE WHEN bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)        AS reservas_fin,
       COUNT(CASE WHEN bh.metodo_de_pago = 'Cash payment' THEN 1 END)        AS reservas_cash,
       COUNT(CASE WHEN bh.estimate_flag = 1               THEN 1 END)        AS reservas_netas,
       COUNT(CASE WHEN bh.estimate_flag = 1
-                  AND bh.metodo_de_pago = 'Financing'    THEN 1 END)        AS reservas_netas_fin,
+                  AND bh.metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)        AS reservas_netas_fin,
       COUNT(CASE WHEN bh.estimate_flag = 1
                   AND bh.metodo_de_pago = 'Cash payment' THEN 1 END)        AS reservas_netas_cash
-    FROM serving.bookings_history bh
+    FROM prd_datamx_serving.serving.bookings_history bh
     WHERE bh.b2b = 0
       AND bh.fecha_origen BETWEEN '{start}' AND '{end}'
     GROUP BY 1, 2
@@ -380,14 +380,14 @@ SELECT
   fecha_venta_declarada::date                                              AS fecha,
   reservation_hub_name                                                     AS hub,
   COUNT(*)                                                                 AS ventas_total,
-  COUNT(CASE WHEN metodo_de_pago = 'Financing'         THEN 1 END)        AS ventas_fin,
+  COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak')         THEN 1 END)        AS ventas_fin,
   COUNT(CASE WHEN metodo_de_pago = 'Cash payment'      THEN 1 END)        AS ventas_cash,
   COUNT(CASE WHEN financing_provider = 'Kavak Capital' THEN 1 END)        AS ventas_kuna
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_venta_declarada >= '{daily_start}'
   AND fecha_venta_declarada < '{today}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1, 2 ORDER BY 1, 2
 """)
 
@@ -396,14 +396,14 @@ SELECT
   fecha_entrega::date                                                      AS fecha,
   reservation_hub_name                                                     AS hub,
   COUNT(*)                                                                 AS entregas_brutas,
-  COUNT(CASE WHEN metodo_de_pago = 'Financing'         THEN 1 END)        AS entregas_fin,
+  COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak')         THEN 1 END)        AS entregas_fin,
   COUNT(CASE WHEN metodo_de_pago = 'Cash payment'      THEN 1 END)        AS entregas_cash,
   COUNT(CASE WHEN financing_provider = 'Kavak Capital' THEN 1 END)        AS entregas_kuna
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_entrega >= '{daily_start}'
   AND fecha_entrega < '{today}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1, 2 ORDER BY 1, 2
 """)
 
@@ -412,12 +412,12 @@ SELECT
   devolucion_date::date AS fecha,
   reservation_hub_name  AS hub,
   COUNT(*)              AS devoluciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND devolucion_date IS NOT NULL
   AND devolucion_date::date >= '{daily_start}'
   AND devolucion_date::date < '{today}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1, 2 ORDER BY 1, 2
 """)
 df_dc = execute_query(f"""
@@ -425,15 +425,15 @@ SELECT
   fecha_cancelacion_reserva::date                                          AS fecha,
   reservation_hub_name                                                     AS hub,
   COUNT(*)                                                                 AS cancel_total,
-  COUNT(CASE WHEN metodo_de_pago = 'Financing'    THEN 1 END)             AS cancel_fin,
+  COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)             AS cancel_fin,
   COUNT(CASE WHEN metodo_de_pago = 'Cash payment' THEN 1 END)             AS cancel_cash
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_cancelacion_reserva IS NOT NULL
   AND estimate_flag = 1
   AND fecha_cancelacion_reserva::date >= '{daily_start}'
   AND fecha_cancelacion_reserva::date < '{today}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1, 2 ORDER BY 1, 2
 """)
 
@@ -443,10 +443,10 @@ SELECT
   reservation_hub_name                                                     AS hub,
   COUNT(CASE WHEN estimate_flag = 1               THEN 1 END)             AS reservas_netas,
   COUNT(CASE WHEN estimate_flag = 1
-              AND metodo_de_pago = 'Financing'    THEN 1 END)             AS reservas_netas_fin,
+              AND metodo_de_pago IN ('Financing', 'Financing Kavak')    THEN 1 END)             AS reservas_netas_fin,
   COUNT(CASE WHEN estimate_flag = 1
               AND metodo_de_pago = 'Cash payment' THEN 1 END)             AS reservas_netas_cash
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_origen >= '{daily_start}'
   AND fecha_origen < '{today}'
@@ -460,13 +460,13 @@ df_lmv = execute_query(f"""
 SELECT
   reservation_hub_name                                                     AS hub,
   COUNT(*)                                                                 AS ventas_total,
-  COUNT(CASE WHEN metodo_de_pago = 'Financing'         THEN 1 END)        AS ventas_fin,
+  COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak')         THEN 1 END)        AS ventas_fin,
   COUNT(CASE WHEN metodo_de_pago = 'Cash payment'      THEN 1 END)        AS ventas_cash,
   COUNT(CASE WHEN financing_provider = 'Kavak Capital' THEN 1 END)        AS ventas_kuna
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_venta_declarada BETWEEN '{lm_start}' AND '{lm_end}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1
 """)
 
@@ -474,12 +474,12 @@ df_lme = execute_query(f"""
 SELECT
   reservation_hub_name                                                     AS hub,
   COUNT(*)                                                                 AS entregas_brutas,
-  COUNT(CASE WHEN metodo_de_pago = 'Financing'         THEN 1 END)        AS entregas_fin,
+  COUNT(CASE WHEN metodo_de_pago IN ('Financing', 'Financing Kavak')         THEN 1 END)        AS entregas_fin,
   COUNT(CASE WHEN financing_provider = 'Kavak Capital' THEN 1 END)        AS entregas_kuna
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND fecha_entrega BETWEEN '{lm_start}' AND '{lm_end}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1
 """)
 
@@ -487,11 +487,11 @@ df_lmd = execute_query(f"""
 SELECT
   reservation_hub_name AS hub,
   COUNT(*)             AS devoluciones
-FROM serving.bookings_history
+FROM prd_datamx_serving.serving.bookings_history
 WHERE b2b = 0
   AND devolucion_date IS NOT NULL
   AND devolucion_date::date BETWEEN '{lm_start}' AND '{lm_end}'
-  AND metodo_de_pago IN ('Financing', 'Cash payment')
+  AND metodo_de_pago IN ('Financing', 'Cash payment', 'Financing Kavak')
 GROUP BY 1
 """)
 print(f"  rawLastMonth: lmv={len(df_lmv)} lme={len(df_lme)} lmd={len(df_lmd)}")

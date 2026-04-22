@@ -335,7 +335,7 @@ REGION_CASE = """
 df_region = execute_query(f"""
 SELECT
   DATE_TRUNC('week', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -352,7 +352,7 @@ ORDER BY 1, 2, 3
 df_mx = execute_query(f"""
 SELECT
   DATE_TRUNC('week', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -368,7 +368,7 @@ ORDER BY 1, 2, 3
 # LWTD region
 df_region_lwtd = execute_query(f"""
 SELECT
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -383,7 +383,7 @@ HAVING region IS NOT NULL
 
 df_mx_lwtd = execute_query(f"""
 SELECT
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -420,7 +420,7 @@ df_aging = execute_query(f"""
 aged AS (
   SELECT
     DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {AGING_CASE} AS aging_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -446,7 +446,7 @@ ORDER BY 1, 2,
 df_aging_lwtd = execute_query(f"""
 {AGING_CTE}
 SELECT
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   {AGING_CASE} AS aging_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -476,7 +476,7 @@ df_precio = execute_query(f"""
 WITH priced AS (
   SELECT
     DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {PRECIO_CASE} AS precio_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -503,7 +503,7 @@ ORDER BY 1, 2,
 
 df_precio_lwtd = execute_query(f"""
 SELECT
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   {PRECIO_CASE} AS precio_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -526,7 +526,7 @@ print("Fetching COMING SOON...")
 df_cs = execute_query(f"""
 SELECT
   DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -544,7 +544,7 @@ ORDER BY 1, 2, 3
 
 df_cs_lwtd = execute_query(f"""
 SELECT
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -578,9 +578,9 @@ print(f"  → pago=0 lwtd_pago=0 (pendiente)")
 print("Fetching PIX...")
 PIX_CASE = """
   CASE
-    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.88  THEN '< 0.88'
-    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.93  THEN '0.88-0.93'
-    WHEN CASE b.metodo_de_pago WHEN 'Financing'     THEN h.pix_financing WHEN 'Cash payment'  THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.98  THEN '0.93-0.98'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing' THEN h.pix_financing WHEN 'Financing Kavak' THEN h.pix_financing WHEN 'Cash payment' THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.88  THEN '< 0.88'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing' THEN h.pix_financing WHEN 'Financing Kavak' THEN h.pix_financing WHEN 'Cash payment' THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.93  THEN '0.88-0.93'
+    WHEN CASE b.metodo_de_pago WHEN 'Financing' THEN h.pix_financing WHEN 'Financing Kavak' THEN h.pix_financing WHEN 'Cash payment' THEN h.pix_cash ELSE COALESCE(h.pix_financing, h.pix_cash) END < 0.98  THEN '0.93-0.98'
     ELSE '≥ 0.98'
   END
 """
@@ -590,7 +590,7 @@ df_pix = execute_query(f"""
 WITH pixed AS (
   SELECT
     DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {PIX_CASE} AS pix_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -617,7 +617,7 @@ ORDER BY 1, 2,
 
 df_pix_lwtd = execute_query(f"""
 SELECT
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   {PIX_CASE} AS pix_bucket,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -670,7 +670,7 @@ df_stock_region = execute_query(f"""
 base AS (
   SELECT
     DATE_TRUNC('week', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
@@ -695,7 +695,7 @@ df_stock_region_lwtd = execute_query(f"""
 {STOCK_REGION_VEL_CTE},
 base AS (
   SELECT
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
@@ -799,7 +799,7 @@ print("Fetching monthly REGIÓN...")
 df_region_monthly = execute_query(f"""
 SELECT
   DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   {REGION_CASE} AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -816,7 +816,7 @@ ORDER BY 1, 2, 3
 df_mx_monthly = execute_query(f"""
 SELECT
   DATE_TRUNC('month', COALESCE(fecha_venta_declarada, fecha_cancelacion_reserva))::date AS semana,
-  metodo_de_pago,
+  CASE WHEN metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE metodo_de_pago END AS metodo_de_pago,
   'MX' AS region,
   COUNT(CASE WHEN fecha_venta_declarada IS NOT NULL THEN 1 END)                          AS ventas,
   COUNT(CASE WHEN fecha_cancelacion_reserva IS NOT NULL AND estimate_flag=1 THEN 1 END)  AS cancelaciones
@@ -836,7 +836,7 @@ df_aging_monthly = execute_query(f"""
 aged AS (
   SELECT
     DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {AGING_CASE} AS aging_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -865,7 +865,7 @@ df_precio_monthly = execute_query(f"""
 WITH priced AS (
   SELECT
     DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {PRECIO_CASE} AS precio_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -895,7 +895,7 @@ print("Fetching monthly COMING SOON...")
 df_cs_monthly = execute_query(f"""
 SELECT
   DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-  b.metodo_de_pago,
+  CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
   CASE WHEN h.flag_coming_soon = 1 THEN 'Coming Soon' ELSE 'Sin Coming Soon' END AS cs_dim,
   COUNT(CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 END)                           AS ventas,
   COUNT(CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag=1 THEN 1 END) AS cancelaciones
@@ -920,7 +920,7 @@ df_pix_monthly = execute_query(f"""
 WITH pixed AS (
   SELECT
     DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {PIX_CASE} AS pix_bucket,
     b.fecha_venta_declarada,
     b.fecha_cancelacion_reserva,
@@ -952,7 +952,7 @@ df_stock_region_monthly = execute_query(f"""
 base AS (
   SELECT
     DATE_TRUNC('month', COALESCE(b.fecha_venta_declarada, b.fecha_cancelacion_reserva))::date AS semana,
-    b.metodo_de_pago,
+    CASE WHEN b.metodo_de_pago = 'Financing Kavak' THEN 'Financing' ELSE b.metodo_de_pago END AS metodo_de_pago,
     {STOCK_REGION_CASE} AS sr,
     CASE WHEN b.fecha_venta_declarada IS NOT NULL THEN 1 ELSE 0 END AS venta,
     CASE WHEN b.fecha_cancelacion_reserva IS NOT NULL AND b.estimate_flag = 1 THEN 1 ELSE 0 END AS cancel
