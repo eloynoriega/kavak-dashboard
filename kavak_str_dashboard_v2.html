@@ -1899,25 +1899,99 @@ function renderSTRTIChart() {
 // DETAIL TABLE
 // ═══════════════════════════════════════════════════════════
 function renderDetailTable() {
-  const dataA = getAggData().slice(-7).reverse(); // last 7 periods (rawA_w — reservation date)
-  const dataE = getAggDataE().slice(-7).reverse(); // rawE_w — close date + estimate_flag (for STR)
+  // ── Diario: mismo día de semana × últimas 7 semanas ──────────────────────
+  if (currentGran === 'diario') {
+    const hub    = currentHub;
+    const today  = new Date(); today.setHours(0,0,0,0);
+    const yest   = new Date(today); yest.setDate(today.getDate() - 1);
 
-  // Map rawE by semana
+    // Build 7 target dates: yesterday, -7d, -14d … -42d
+    const targets = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(yest); d.setDate(yest.getDate() - i * 7);
+      targets.push(d.toISOString().slice(0, 10));
+    }
+
+    // Aggregate rawDaily by fecha for the specific target dates
+    const dayMap = {};
+    rawDaily.forEach(r => {
+      if (!targets.includes(r.fecha)) return;
+      if (hub !== '__MX__' && r.hub !== hub) return;
+      if (hub === '__MX__' && r.hub !== '__MX__') return;
+      if (!dayMap[r.fecha]) dayMap[r.fecha] = {
+        reservas_netas:0, reservas_netas_fin:0, reservas_netas_cash:0,
+        ventas_total:0, ventas_fin:0, ventas_cash:0,
+        cancel_total:0, cancel_fin:0, cancel_cash:0
+      };
+      const m = dayMap[r.fecha];
+      m.reservas_netas     += r.reservas_netas     || 0;
+      m.reservas_netas_fin += r.reservas_netas_fin || 0;
+      m.reservas_netas_cash+= r.reservas_netas_cash|| 0;
+      m.ventas_total       += r.ventas_total       || 0;
+      m.ventas_fin         += r.ventas_fin         || 0;
+      m.ventas_cash        += r.ventas_cash        || 0;
+      m.cancel_total       += r.cancel_total       || 0;
+      m.cancel_fin         += r.cancel_fin         || 0;
+      m.cancel_cash        += r.cancel_cash        || 0;
+    });
+
+    const fmtDate = iso => { const d = new Date(iso+'T12:00:00'); return `${d.getDate()}/${d.getMonth()+1}`; };
+
+    const rows = targets.map((fecha, i) => {
+      const d  = dayMap[fecha] || {};
+      const vt = d.ventas_total||0, vf=d.ventas_fin||0, vc=d.ventas_cash||0;
+      const ct = d.cancel_total||0, cf=d.cancel_fin||0, cc=d.cancel_cash||0;
+      const strFin   = safeDiv(vf, vf+cf)*100;
+      const strCash  = safeDiv(vc, vc+cc)*100;
+      const strTotal = safeDiv(vt, vt+ct)*100;
+      const mixFin   = safeDiv(vf+cf, vt+ct)*100;
+      const cfB = strColor(strFin,'fin'), ccB = strColor(strCash,'cash'), ctB = strColor(strTotal,'total');
+      const label = i === 0 ? `Ayer&nbsp;<small style="font-weight:normal;color:#888">(${fmtDate(fecha)})</small>` : fmtDate(fecha);
+      return `<tr${i===0?' style="font-weight:600"':''}>
+        <td>${label}</td>
+        <td>${fmtN(d.reservas_netas||0)}</td>
+        <td>${fmtN(d.reservas_netas_fin||0)}</td>
+        <td>${fmtN(d.reservas_netas_cash||0)}</td>
+        <td style="color:#aaa">—</td><td style="color:#aaa">—</td>
+        <td>${fmtN(vt)}</td>
+        <td>${fmtN(ct)}</td>
+        <td><span class="badge ${ctB}">${fmt1(strTotal)}</span></td>
+        <td><span class="badge ${cfB}">${fmt1(strFin)}</span></td>
+        <td><span class="badge ${ccB}">${fmt1(strCash)}</span></td>
+        <td>${fmt1(mixFin)}</td>
+      </tr>`;
+    });
+
+    document.getElementById('detail-table-wrap').innerHTML = `
+      <table>
+        <thead><tr>
+          <th>Fecha <small style="font-weight:normal;opacity:.7">(mismo día × 7 sem)</small></th>
+          <th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
+          <th>HOs</th><th>Aprob.</th>
+          <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
+        </tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>`;
+    return;
+  }
+
+  // ── Semanal / Mensual ──────────────────────────────────────────────────────
+  const dataA = getAggData().slice(-7).reverse(); // rawA_w — reservation date
+  const dataE = getAggDataE().slice(-7).reverse(); // rawE_w — close date + estimate_flag (STR)
+
   const eMap = {};
   dataE.forEach(d => eMap[d.semana] = d);
 
   // Aggregate rawFunnelFin (HOs + Aprobaciones) respecting hub + granularity
   const hub = currentHub;
   const fRows = hub === '__MX__' ? rawFunnelFin : rawFunnelFin.filter(r => r.hub === hub);
-  const fMap = {};
+  const fMap  = {};
   fRows.forEach(r => {
-    // For monthly gran, key by YYYY-MM so it aligns with dataA semana
     const key = currentGran === 'mensual' ? r.semana.slice(0,7) : r.semana;
     if (!fMap[key]) fMap[key] = {ho_total:0, app_total:0};
     fMap[key].ho_total  += r.ho_total;
     fMap[key].app_total += r.app_total;
   });
-  // dataA semana for mensual comes as YYYY-MM-DD (first day of month from aggByMonth)
   const getFunnelKey = semana => currentGran === 'mensual' ? semana.slice(0,7) : semana;
 
   const rows = dataA.map(d => {
@@ -1946,7 +2020,7 @@ function renderDetailTable() {
   document.getElementById('detail-table-wrap').innerHTML = `
     <table>
       <thead><tr>
-        <th>${currentGran === 'diario' ? 'Fecha' : 'Período'}</th>
+        <th>Período</th>
         <th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
         <th>HOs</th><th>Aprob.</th>
         <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
