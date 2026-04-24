@@ -1972,12 +1972,14 @@ function renderDetailTable() {
     });
     const fKey = s => currentGran === 'mensual' ? s.slice(0,7) : s;
 
-    // Take last 8 periods: 6 historical + LWTD + WTD
+    // 7 hist (termina en la última semana cerrada = LWTD) + WTD
+    // periods[-8..-1] = [2/3...13/4, 20/4]
     const periods = dataA.slice(-8);
     const n       = periods.length;
-    const hist    = periods.slice(0, n - 2);   // historical context
-    const lwtd    = periods[n - 2];             // last full week
-    const wtd     = periods[n - 1];             // current WTD
+    const hist    = periods.slice(0, n - 1);   // 7 semanas: [2/3 → 13/4]
+    const lwtd    = hist.at(-1);               // última cerrada = LWTD (13/4)
+    const prevLwtd= hist.at(-2);              // semana anterior a LWTD (6/4) — para ΔWoW
+    const wtd     = periods[n - 1];           // WTD actual (20/4)
 
     const getVal = (m, d) => {
       if (!d) return null;
@@ -1989,41 +1991,46 @@ function renderDetailTable() {
       return null;
     };
 
-    // Header: [hist] | Δ WoW | WTD | LWTD | Δ vs LWTD  (mismo orden que STR por Dimensión)
-    const prevHist = hist.at(-1);   // última semana cerrada antes de LWTD
-    const hdrHist  = hist.map(d =>
-      `<th>${chartLabel(d.semana)}</th>`).join('');
+    // Headers: [7 hist, último=LWTD] | ΔWoW | WTD | Δ vs LWTD
+    const hdrHist  = hist.map((d, i) => {
+      const isLwtd = i === hist.length - 1;
+      return isLwtd
+        ? `<th class="col-lwtd">${chartLabel(d.semana)}<br><small>LWTD</small></th>`
+        : `<th>${chartLabel(d.semana)}</th>`;
+    }).join('');
     const hdrWow   = `<th class="col-wow">Δ WoW<br><small>sem.cerrada</small></th>`;
     const hdrWtd   = `<th class="col-wtd">WTD<br><small>${chartLabel(wtd.semana)}–</small></th>`;
-    const hdrLwtd  = `<th class="col-lwtd">LWTD<br><small>${chartLabel(lwtd.semana)}</small></th>`;
     const hdrDelta = `<th class="col-delta">Δ vs LWTD</th>`;
 
     const rows = METRICS.map(m => {
-      const histCells = hist.map(d => {
+      // 7 hist cells: 6 plain + last (LWTD) with badge for STR
+      const histCells = hist.map((d, i) => {
         const v = getVal(m, d);
-        return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
+        const isLwtd = i === hist.length - 1;
+        if (v === null) return `<td class="${isLwtd?'col-lwtd-val':''}">—</td>`;
+        if (isLwtd && m.type === 'str') {
+          return `<td class="col-lwtd-val"><span class="badge ${strColor(v, m.id.replace('str_',''))||''}">${fmt1(v)}</span></td>`;
+        }
+        return `<td class="${isLwtd?'col-lwtd-val':''}">${m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
       }).join('');
 
-      const vPrev = getVal(m, prevHist);   // penúltima semana (para Δ WoW sem.cerrada)
-      const vLwtd = getVal(m, lwtd);
-      const vWtd  = getVal(m, wtd);
+      const vPrev = getVal(m, prevLwtd);   // 6/4
+      const vLwtd = getVal(m, lwtd);       // 13/4
+      const vWtd  = getVal(m, wtd);        // 20/4
 
-      // Δ WoW = última semana cerrada (LWTD) vs la anterior (prevHist)
+      // ΔWoW = última cerrada (13/4) vs penúltima (6/4)
       const deltaWow = (vLwtd !== null && vPrev !== null && vPrev !== 0)
         ? m.type === 'str' ? vLwtd - vPrev : (vLwtd - vPrev) / Math.abs(vPrev) * 100
         : null;
 
-      // Δ vs LWTD = WTD vs LWTD (manzanas-con-manzanas)
-      const deltaVsLwtd = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
+      // Δ vs LWTD = WTD vs 13/4
+      const delta = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
         ? m.type === 'str' ? vWtd - vLwtd : (vWtd - vLwtd) / Math.abs(vLwtd) * 100
         : null;
 
-      const wtdBadge  = vWtd === null ? '—' : m.type === 'str'
-        ? `<span class="badge ${strColor(vWtd,  m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
+      const wtdBadge = vWtd === null ? '—' : m.type === 'str'
+        ? `<span class="badge ${strColor(vWtd, m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
         : fmtN(vWtd);
-      const lwtdBadge = vLwtd === null ? '—' : m.type === 'str'
-        ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
-        : fmtN(vLwtd);
 
       const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
         ? ' class="row-sep"' : '';
@@ -2033,14 +2040,13 @@ function renderDetailTable() {
         ${histCells}
         ${fmtDelta(deltaWow, m, 'col-wow')}
         <td class="col-wtd-val">${wtdBadge}</td>
-        <td class="col-lwtd-val">${lwtdBadge}</td>
-        ${fmtDelta(deltaVsLwtd, m)}
+        ${fmtDelta(delta, m)}
       </tr>`;
     });
 
     const thead = `<thead><tr>
       <th class="metric-label">Métrica</th>
-      ${hdrHist}${hdrWow}${hdrWtd}${hdrLwtd}${hdrDelta}
+      ${hdrHist}${hdrWow}${hdrWtd}${hdrDelta}
     </tr></thead>`;
 
     document.getElementById('detail-table-wrap').innerHTML = `
@@ -2113,12 +2119,9 @@ function renderDetailTable() {
   const ldPrev = targets[6];            // LD-1
   const ld     = targets[7];            // Ayer (LD)
 
-  // Δ WoW diario: LD-1 vs hist.at(-1) (mismo día, semana anterior vs la de antes)
-  const ldPrevPrev = hist.at(-1);  // mismo día 2 semanas atrás
   const hdrHist  = hist.map(f => `<th>${fmtD(f)}</th>`).join('');
-  const hdrWow   = `<th class="col-wow">Δ WoW<br><small>sem.cerrada</small></th>`;
-  const hdrLd    = `<th class="col-wtd">Ayer<br><small>${fmtD(ld)}</small></th>`;
   const hdrLd1   = `<th class="col-lwtd">LD-1<br><small>${fmtD(ldPrev)}</small></th>`;
+  const hdrLd    = `<th class="col-wtd">Ayer<br><small>${fmtD(ld)}</small></th>`;
   const hdrDelta = `<th class="col-delta">Δ vs LD-1</th>`;
 
   const rows = METRICS.map(m => {
@@ -2127,16 +2130,9 @@ function renderDetailTable() {
       return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
     }).join('');
 
-    const vPrevPrev = getDailyVal(m, ldPrevPrev);   // mismo día 2 semanas atrás
     const vLd1 = getDailyVal(m, ldPrev);
     const vLd  = getDailyVal(m, ld);
 
-    // Δ WoW = LD-1 vs hist.at(-1)
-    const deltaWow = (vLd1 !== null && vPrevPrev !== null && vPrevPrev !== 0)
-      ? m.type === 'str' ? vLd1 - vPrevPrev : (vLd1 - vPrevPrev) / Math.abs(vPrevPrev) * 100
-      : null;
-
-    // Δ vs LD-1 = Ayer vs mismo día semana pasada
     const delta = (vLd !== null && vLd1 !== null && vLd1 !== 0)
       ? m.type === 'str' ? vLd - vLd1 : (vLd - vLd1) / Math.abs(vLd1) * 100
       : null;
@@ -2154,9 +2150,8 @@ function renderDetailTable() {
     return `<tr${separator}>
       <td class="metric-label"><strong>${m.label}</strong></td>
       ${histCells}
-      ${fmtDelta(deltaWow, m, 'col-wow')}
-      <td class="col-wtd-val">${ldBadge}</td>
       <td class="col-lwtd-val">${ld1Badge}</td>
+      <td class="col-wtd-val">${ldBadge}</td>
       ${fmtDelta(delta, m)}
     </tr>`;
   });
@@ -2165,7 +2160,7 @@ function renderDetailTable() {
     <table class="detail-pivot">
       <thead><tr>
         <th class="metric-label">Métrica</th>
-        ${hdrHist}${hdrWow}${hdrLd}${hdrLd1}${hdrDelta}
+        ${hdrHist}${hdrLd1}${hdrLd}${hdrDelta}
       </tr></thead>
       <tbody>${rows.join('')}</tbody>
     </table>`;
