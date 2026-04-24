@@ -1972,14 +1972,11 @@ function renderDetailTable() {
     });
     const fKey = s => currentGran === 'mensual' ? s.slice(0,7) : s;
 
-    // 7 hist (termina en la última semana cerrada = LWTD) + WTD
-    // periods[-8..-1] = [2/3...13/4, 20/4]
-    const periods = dataA.slice(-8);
-    const n       = periods.length;
-    const hist    = periods.slice(0, n - 1);   // 7 semanas: [2/3 → 13/4]
-    const lwtd    = hist.at(-1);               // última cerrada = LWTD (13/4)
-    const prevLwtd= hist.at(-2);              // semana anterior a LWTD (6/4) — para ΔWoW
-    const wtd     = periods[n - 1];           // WTD actual (20/4)
+    // 7 hist semanas completas (rawA_w) — la última es la última semana cerrada
+    const periods  = dataA.slice(-8);
+    const hist     = periods.slice(0, 7);    // [2/3 → 13/4], todas completas
+    const prevLwtd = hist.at(-2);            // 6/4 (para ΔWoW)
+    const lwtdWeek = hist.at(-1);            // 13/4 full week (para ΔWoW)
 
     const getVal = (m, d) => {
       if (!d) return null;
@@ -1991,48 +1988,84 @@ function renderDetailTable() {
       return null;
     };
 
-    // Headers: [7 hist, último=LWTD] | ΔWoW | WTD | Δ vs LWTD
-    const hdrHist  = hist.map((d, i) => {
-      const isLwtd = i === hist.length - 1;
-      return isLwtd
-        ? `<th class="col-lwtd">${chartLabel(d.semana)}<br><small>LWTD</small></th>`
-        : `<th>${chartLabel(d.semana)}</th>`;
-    }).join('');
+    // ── WTD y LWTD desde rawDaily (mismo # días — comparación justa) ───────────
+    const _t = new Date(); _t.setHours(0,0,0,0);
+    const _y = new Date(_t); _y.setDate(_t.getDate()-1);
+    const _dow = _y.getDay();
+    const _mon = new Date(_y); _mon.setDate(_y.getDate() - (_dow===0?6:_dow-1));
+    const _wtdDates=[], _lwtdDates=[];
+    for (let d=new Date(_mon); d<=_y; d.setDate(d.getDate()+1)) {
+      const iso = d.toISOString().slice(0,10);
+      _wtdDates.push(iso);
+      const ld=new Date(d); ld.setDate(d.getDate()-7);
+      _lwtdDates.push(ld.toISOString().slice(0,10));
+    }
+    function _sd(dates,h){
+      const r=rawDaily.filter(r=>dates.includes(r.fecha)&&(h==='__MX__'?r.hub==='__MX__':r.hub===h));
+      const s={reservas_netas:0,reservas_netas_fin:0,reservas_netas_cash:0,
+               ventas_total:0,ventas_fin:0,ventas_cash:0,cancel_total:0,cancel_fin:0,cancel_cash:0};
+      r.forEach(x=>{Object.keys(s).forEach(k=>{s[k]+=(x[k]||0);});});
+      return s;
+    }
+    function _sfd(dates,h){
+      const r=rawFunnelFinDaily.filter(r=>dates.includes(r.fecha)&&(h==='__MX__'?r.hub==='__MX__':r.hub===h));
+      const s={ho_total:0,app_total:0};
+      r.forEach(x=>{s.ho_total+=(x.ho_total||0);s.app_total+=(x.app_total||0);});
+      return s;
+    }
+    const _wtdA=_sd(_wtdDates,hub), _lwtdA=_sd(_lwtdDates,hub);
+    const _wtdF=_sfd(_wtdDates,hub), _lwtdF=_sfd(_lwtdDates,hub);
+    function _dsv(m,sA,sF){
+      if(m.id==='res_netas')  return sA.reservas_netas;
+      if(m.id==='netas_fin')  return sA.reservas_netas_fin;
+      if(m.id==='netas_cash') return sA.reservas_netas_cash;
+      if(m.id==='hos')        return sF.ho_total;
+      if(m.id==='aprob')      return sF.app_total;
+      if(m.id==='ventas')     return sA.ventas_total;
+      if(m.id==='cancels')    return sA.cancel_total;
+      if(m.id==='str_total')  return safeDiv(sA.ventas_total,sA.ventas_total+sA.cancel_total)*100;
+      if(m.id==='str_fin')    return safeDiv(sA.ventas_fin,  sA.ventas_fin  +sA.cancel_fin  )*100;
+      if(m.id==='str_cash')   return safeDiv(sA.ventas_cash, sA.ventas_cash +sA.cancel_cash )*100;
+      if(m.id==='mix_fin')    return safeDiv(sA.ventas_fin+sA.cancel_fin,sA.ventas_total+sA.cancel_total)*100;
+      return 0;
+    }
+    const _fmtRange = dates => {
+      const s=dates[0].slice(5).replace('-','/'), e=dates.at(-1).slice(5).replace('-','/');
+      return s===e ? s : s+'–'+e;
+    };
+
+    // Headers: [7 hist plain] | ΔWoW | WTD | LWTD | Δ WTD vs LWTD
+    const hdrHist  = hist.map(d=>`<th>${chartLabel(d.semana)}</th>`).join('');
     const hdrWow   = `<th class="col-wow">Δ WoW<br><small>sem.cerrada</small></th>`;
-    const hdrWtd   = `<th class="col-wtd">WTD<br><small>${chartLabel(wtd.semana)}–</small></th>`;
-    const hdrDelta = `<th class="col-delta">Δ vs LWTD</th>`;
+    const hdrWtd   = `<th class="col-wtd">WTD<br><small>${_fmtRange(_wtdDates)}</small></th>`;
+    const hdrLwtd  = `<th class="col-lwtd">LWTD<br><small>${_fmtRange(_lwtdDates)}</small></th>`;
+    const hdrDelta = `<th class="col-delta">Δ WTD<br><small>vs LWTD</small></th>`;
 
     const rows = METRICS.map(m => {
-      // 7 hist cells: 6 plain + last (LWTD) with badge for STR
-      const histCells = hist.map((d, i) => {
+      const histCells = hist.map(d => {
         const v = getVal(m, d);
-        const isLwtd = i === hist.length - 1;
-        if (v === null) return `<td class="${isLwtd?'col-lwtd-val':''}">—</td>`;
-        if (isLwtd && m.type === 'str') {
-          return `<td class="col-lwtd-val"><span class="badge ${strColor(v, m.id.replace('str_',''))||''}">${fmt1(v)}</span></td>`;
-        }
-        return `<td class="${isLwtd?'col-lwtd-val':''}">${m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
+        return `<td>${v===null?'—':m.type==='str'?fmt1(v):fmtN(v)}</td>`;
       }).join('');
 
-      const vPrev = getVal(m, prevLwtd);   // 6/4
-      const vLwtd = getVal(m, lwtd);       // 13/4
-      const vWtd  = getVal(m, wtd);        // 20/4
+      const vPrev  = getVal(m, prevLwtd);        // 6/4 full (ΔWoW)
+      const vLwtdW = getVal(m, lwtdWeek);        // 13/4 full (ΔWoW)
+      const vWtd   = _dsv(m, _wtdA, _wtdF);     // WTD daily (20-23/4)
+      const vLwtd  = _dsv(m, _lwtdA, _lwtdF);   // LWTD daily (13-17/4)
 
-      // ΔWoW = última cerrada (13/4) vs penúltima (6/4)
-      const deltaWow = (vLwtd !== null && vPrev !== null && vPrev !== 0)
-        ? m.type === 'str' ? vLwtd - vPrev : (vLwtd - vPrev) / Math.abs(vPrev) * 100
-        : null;
+      const deltaWow = (vLwtdW!==null&&vPrev!==null&&vPrev!==0)
+        ? m.type==='str' ? vLwtdW-vPrev : (vLwtdW-vPrev)/Math.abs(vPrev)*100 : null;
 
-      // Δ vs LWTD = WTD vs 13/4
-      const delta = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
-        ? m.type === 'str' ? vWtd - vLwtd : (vWtd - vLwtd) / Math.abs(vLwtd) * 100
-        : null;
+      const delta = (vWtd!==null&&vLwtd!==null&&vLwtd!==0)
+        ? m.type==='str' ? vWtd-vLwtd : (vWtd-vLwtd)/Math.abs(vLwtd)*100 : null;
 
-      const wtdBadge = vWtd === null ? '—' : m.type === 'str'
+      const wtdBadge  = m.type==='str'
         ? `<span class="badge ${strColor(vWtd, m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
         : fmtN(vWtd);
+      const lwtdBadge = m.type==='str'
+        ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
+        : fmtN(vLwtd);
 
-      const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
+      const separator = m.id==='cancels'||m.id==='netas_cash'||m.id==='aprob'
         ? ' class="row-sep"' : '';
 
       return `<tr${separator}>
@@ -2040,13 +2073,14 @@ function renderDetailTable() {
         ${histCells}
         ${fmtDelta(deltaWow, m, 'col-wow')}
         <td class="col-wtd-val">${wtdBadge}</td>
+        <td class="col-lwtd-val">${lwtdBadge}</td>
         ${fmtDelta(delta, m)}
       </tr>`;
     });
 
     const thead = `<thead><tr>
       <th class="metric-label">Métrica</th>
-      ${hdrHist}${hdrWow}${hdrWtd}${hdrDelta}
+      ${hdrHist}${hdrWow}${hdrWtd}${hdrLwtd}${hdrDelta}
     </tr></thead>`;
 
     document.getElementById('detail-table-wrap').innerHTML = `
