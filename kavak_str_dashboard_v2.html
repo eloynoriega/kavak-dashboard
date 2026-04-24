@@ -1935,7 +1935,8 @@ function renderDetailTable() {
       m.cancel_cash        += r.cancel_cash        || 0;
     });
 
-    const fmtDate = iso => { const d = new Date(iso+'T12:00:00'); return `${d.getDate()}/${d.getMonth()+1}`; };
+    const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const fmtDate = iso => { const d = new Date(iso+'T12:00:00'); return `${DAYS_ES[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`; };
 
     const rows = targets.map((fecha, i) => {
       const d  = dayMap[fecha] || {};
