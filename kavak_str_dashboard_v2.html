@@ -1899,26 +1899,42 @@ function renderSTRTIChart() {
 // DETAIL TABLE
 // ═══════════════════════════════════════════════════════════
 function renderDetailTable() {
-  const dataA = getAggData().slice(-7).reverse(); // last 7 periods
-  const dataE = getAggDataE().slice(-7).reverse(); // close date + estimate_flag (for STR)
-  // Build a map from semana to rawE data
+  const dataA = getAggData().slice(-7).reverse(); // last 7 periods (rawA_w — reservation date)
+  const dataE = getAggDataE().slice(-7).reverse(); // rawE_w — close date + estimate_flag (for STR)
+
+  // Map rawE by semana
   const eMap = {};
   dataE.forEach(d => eMap[d.semana] = d);
+
+  // Aggregate rawFunnelFin (HOs + Aprobaciones) respecting hub + granularity
+  const hub = currentHub;
+  const fRows = hub === '__MX__' ? rawFunnelFin : rawFunnelFin.filter(r => r.hub === hub);
+  const fMap = {};
+  fRows.forEach(r => {
+    // For monthly gran, key by YYYY-MM so it aligns with dataA semana
+    const key = currentGran === 'mensual' ? r.semana.slice(0,7) : r.semana;
+    if (!fMap[key]) fMap[key] = {ho_total:0, app_total:0};
+    fMap[key].ho_total  += r.ho_total;
+    fMap[key].app_total += r.app_total;
+  });
+  // dataA semana for mensual comes as YYYY-MM-DD (first day of month from aggByMonth)
+  const getFunnelKey = semana => currentGran === 'mensual' ? semana.slice(0,7) : semana;
+
   const rows = dataA.map(d => {
     const e = eMap[d.semana] || {ventas_total:0,ventas_fin:0,ventas_cash:0,cancel_total:0,cancel_fin:0,cancel_cash:0};
-    const strFin = safeDiv(e.ventas_fin, e.ventas_fin + e.cancel_fin)*100;
-    const strCash = safeDiv(e.ventas_cash, e.ventas_cash + e.cancel_cash)*100;
+    const f = fMap[getFunnelKey(d.semana)] || {ho_total:0, app_total:0};
+    const strFin   = safeDiv(e.ventas_fin,   e.ventas_fin   + e.cancel_fin)*100;
+    const strCash  = safeDiv(e.ventas_cash,  e.ventas_cash  + e.cancel_cash)*100;
     const strTotal = safeDiv(e.ventas_total, e.ventas_total + e.cancel_total)*100;
-    const netRes = e.ventas_total + e.cancel_total;
-    const netFin = e.ventas_fin + e.cancel_fin;
-    const netCash = e.ventas_cash + e.cancel_cash;
-    const mixFin = safeDiv(netFin, netRes)*100;
+    const mixFin   = safeDiv(e.ventas_fin + e.cancel_fin, e.ventas_total + e.cancel_total)*100;
     const cf = strColor(strFin,'fin'), cc = strColor(strCash,'cash'), ct = strColor(strTotal,'total');
     return `<tr>
       <td>${chartLabel(d.semana)}</td>
-      <td>${fmtN(netRes)}</td>
-      <td>${fmtN(netFin)}</td>
-      <td>${fmtN(netCash)}</td>
+      <td>${fmtN(d.reservas_netas)}</td>
+      <td>${fmtN(d.reservas_netas_fin)}</td>
+      <td>${fmtN(d.reservas_netas_cash)}</td>
+      <td>${fmtN(f.ho_total)}</td>
+      <td>${fmtN(f.app_total)}</td>
       <td>${fmtN(e.ventas_total)}</td>
       <td>${fmtN(e.cancel_total)}</td>
       <td><span class="badge ${ct}">${fmt1(strTotal)}</span></td>
@@ -1930,7 +1946,9 @@ function renderDetailTable() {
   document.getElementById('detail-table-wrap').innerHTML = `
     <table>
       <thead><tr>
-        <th>${currentGran === 'diario' ? 'Fecha' : 'Período'}</th><th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
+        <th>${currentGran === 'diario' ? 'Fecha' : 'Período'}</th>
+        <th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
+        <th>HOs</th><th>Aprob.</th>
         <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
       </tr></thead>
       <tbody>${rows.join('')}</tbody>
