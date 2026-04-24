@@ -1935,6 +1935,21 @@ function renderDetailTable() {
       m.cancel_cash        += r.cancel_cash        || 0;
     });
 
+    // Aggregate rawFunnelFin by Monday-of-week → HOs + Aprob for the week of each target day
+    const getMondayISO = iso => {
+      const d = new Date(iso + 'T12:00:00');
+      const diff = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      d.setDate(d.getDate() - diff);
+      return d.toISOString().slice(0, 10);
+    };
+    const fRows = hub === '__MX__' ? rawFunnelFin : rawFunnelFin.filter(r => r.hub === hub);
+    const fMapD = {};
+    fRows.forEach(r => {
+      if (!fMapD[r.semana]) fMapD[r.semana] = {ho_total:0, app_total:0};
+      fMapD[r.semana].ho_total  += r.ho_total;
+      fMapD[r.semana].app_total += r.app_total;
+    });
+
     const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     const fmtDate = iso => { const d = new Date(iso+'T12:00:00'); return `${DAYS_ES[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`; };
 
@@ -1947,13 +1962,14 @@ function renderDetailTable() {
       const strTotal = safeDiv(vt, vt+ct)*100;
       const mixFin   = safeDiv(vf+cf, vt+ct)*100;
       const cfB = strColor(strFin,'fin'), ccB = strColor(strCash,'cash'), ctB = strColor(strTotal,'total');
+      const fW = fMapD[getMondayISO(fecha)] || {ho_total:0, app_total:0};
       const label = i === 0 ? `Ayer&nbsp;<small style="font-weight:normal;color:#888">(${fmtDate(fecha)})</small>` : fmtDate(fecha);
       return `<tr${i===0?' style="font-weight:600"':''}>
         <td>${label}</td>
         <td>${fmtN(d.reservas_netas||0)}</td>
         <td>${fmtN(d.reservas_netas_fin||0)}</td>
         <td>${fmtN(d.reservas_netas_cash||0)}</td>
-        <td style="color:#aaa">—</td><td style="color:#aaa">—</td>
+        <td>${fmtN(fW.ho_total)}</td><td>${fmtN(fW.app_total)}</td>
         <td>${fmtN(vt)}</td>
         <td>${fmtN(ct)}</td>
         <td><span class="badge ${ctB}">${fmt1(strTotal)}</span></td>
