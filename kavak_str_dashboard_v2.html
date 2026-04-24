@@ -141,6 +141,20 @@
   .section-header h2 { font-size: 16px; font-weight: 800; color: var(--navy); display: flex; align-items: center; gap: 8px; }
   .section-header h2 .section-icon { font-size: 18px; }
 
+  /* ── Detalle Semanal pivot table ── */
+  .detail-pivot { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .detail-pivot thead th { background: var(--navy); color: #fff; padding: 8px 10px; text-align: right; font-weight: 600; font-size: 11px; white-space: nowrap; }
+  .detail-pivot thead th.metric-label { text-align: left; min-width: 90px; }
+  .detail-pivot tbody td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
+  .detail-pivot tbody td.metric-label { text-align: left; font-weight: 700; font-size: 12px; color: var(--navy); }
+  .detail-pivot tbody tr:hover td { background: #f0f4f8; }
+  .detail-pivot .col-lwtd, .detail-pivot .col-lwtd-val,
+  .detail-pivot .col-wtd,  .detail-pivot .col-wtd-val   { background: rgba(20,50,90,.04); }
+  .detail-pivot .col-delta { background: rgba(20,50,90,.07); font-weight: 600; }
+  .detail-pivot .row-sep td { border-top: 2px solid var(--teal); }
+  .delta-good { color: #1a6640; font-weight: 700; }
+  .delta-bad  { color: #8b1a1a; font-weight: 700; }
+
   /* MODAL PDF */
   #pdf-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9999; overflow-y: auto; }
   #pdf-modal.open { display: flex; align-items: flex-start; justify-content: center; padding: 30px; }
@@ -1899,143 +1913,243 @@ function renderSTRTIChart() {
 // DETAIL TABLE
 // ═══════════════════════════════════════════════════════════
 function renderDetailTable() {
-  // ── Diario: mismo día de semana × últimas 7 semanas ──────────────────────
-  if (currentGran === 'diario') {
-    const hub    = currentHub;
-    const today  = new Date(); today.setHours(0,0,0,0);
-    const yest   = new Date(today); yest.setDate(today.getDate() - 1);
+  // ── Shared metric definitions ─────────────────────────────────────────────
+  const METRICS = [
+    { id:'res_netas',  label:'Res. Netas',  type:'vol', goodUp:true,
+      valA: d=>d.reservas_netas||0,     valE:null, valF:null },
+    { id:'netas_fin',  label:'Netas Fin',   type:'vol', goodUp:true,
+      valA: d=>d.reservas_netas_fin||0, valE:null, valF:null },
+    { id:'netas_cash', label:'Netas Cash',  type:'vol', goodUp:true,
+      valA: d=>d.reservas_netas_cash||0,valE:null, valF:null },
+    { id:'hos',        label:'HOs',         type:'vol', goodUp:true,
+      valA:null, valE:null, valF: d=>d.ho_total||0 },
+    { id:'aprob',      label:'Aprob.',      type:'vol', goodUp:true,
+      valA:null, valE:null, valF: d=>d.app_total||0 },
+    { id:'ventas',     label:'Ventas',      type:'vol', goodUp:true,
+      valA:null, valE: d=>d.ventas_total||0, valF:null },
+    { id:'cancels',    label:'Cancels',     type:'vol', goodUp:false,
+      valA:null, valE: d=>d.cancel_total||0, valF:null },
+    { id:'str_total',  label:'STR Total',   type:'str', goodUp:true,
+      valA:null, valE:(a,e)=>safeDiv(e.ventas_total,e.ventas_total+e.cancel_total)*100, valF:null },
+    { id:'str_fin',    label:'STR Fin',     type:'str', goodUp:true,
+      valA:null, valE:(a,e)=>safeDiv(e.ventas_fin,  e.ventas_fin  +e.cancel_fin  )*100, valF:null },
+    { id:'str_cash',   label:'STR Cash',    type:'str', goodUp:true,
+      valA:null, valE:(a,e)=>safeDiv(e.ventas_cash, e.ventas_cash +e.cancel_cash )*100, valF:null },
+    { id:'mix_fin',    label:'Mix Fin%',    type:'str', goodUp:null,
+      valA:null, valE:(a,e)=>safeDiv(e.ventas_fin+e.cancel_fin,e.ventas_total+e.cancel_total)*100, valF:null },
+  ];
 
-    // Build 7 target dates: yesterday, -7d, -14d … -42d
-    const targets = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(yest); d.setDate(yest.getDate() - i * 7);
-      targets.push(d.toISOString().slice(0, 10));
-    }
+  const hub = currentHub;
+  const fmtDelta = (delta, m, pct=true) => {
+    if (delta === null || isNaN(delta)) return '<td class="delta-cell">—</td>';
+    const isStr  = m.type === 'str';
+    const isGood = m.goodUp === null ? null : (m.goodUp ? delta > 0 : delta < 0);
+    const cls    = isGood === null ? '' : isGood ? 'delta-good' : 'delta-bad';
+    const arrow  = delta > 0 ? '▲' : delta < 0 ? '▼' : '';
+    const val    = isStr
+      ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pp`
+      : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
+    return `<td class="delta-cell ${cls}">${arrow} ${val}</td>`;
+  };
 
-    // Aggregate rawDaily by fecha for the specific target dates
-    const dayMap = {};
-    rawDaily.forEach(r => {
-      if (!targets.includes(r.fecha)) return;
-      if (hub !== '__MX__' && r.hub !== hub) return;
-      if (hub === '__MX__' && r.hub !== '__MX__') return;
-      if (!dayMap[r.fecha]) dayMap[r.fecha] = {
-        reservas_netas:0, reservas_netas_fin:0, reservas_netas_cash:0,
-        ventas_total:0, ventas_fin:0, ventas_cash:0,
-        cancel_total:0, cancel_fin:0, cancel_cash:0
-      };
-      const m = dayMap[r.fecha];
-      m.reservas_netas     += r.reservas_netas     || 0;
-      m.reservas_netas_fin += r.reservas_netas_fin || 0;
-      m.reservas_netas_cash+= r.reservas_netas_cash|| 0;
-      m.ventas_total       += r.ventas_total       || 0;
-      m.ventas_fin         += r.ventas_fin         || 0;
-      m.ventas_cash        += r.ventas_cash        || 0;
-      m.cancel_total       += r.cancel_total       || 0;
-      m.cancel_fin         += r.cancel_fin         || 0;
-      m.cancel_cash        += r.cancel_cash        || 0;
+  // ── SEMANAL / MENSUAL ─────────────────────────────────────────────────────
+  if (currentGran !== 'diario') {
+    const dataA = getAggData();
+    const dataE = getAggDataE();
+
+    const eMap = {};
+    dataE.forEach(d => eMap[d.semana] = d);
+
+    // rawFunnelFin → aggregated by semana + hub
+    const fRows = hub === '__MX__' ? rawFunnelFin : rawFunnelFin.filter(r => r.hub === hub);
+    const fMap  = {};
+    fRows.forEach(r => {
+      const key = currentGran === 'mensual' ? r.semana.slice(0,7) : r.semana;
+      if (!fMap[key]) fMap[key] = {ho_total:0, app_total:0};
+      fMap[key].ho_total  += r.ho_total;
+      fMap[key].app_total += r.app_total;
     });
+    const fKey = s => currentGran === 'mensual' ? s.slice(0,7) : s;
 
-    // Index rawFunnelFinDaily by fecha for exact daily HO + Aprob counts
-    const fdRows = rawFunnelFinDaily.filter(r => hub === '__MX__' ? r.hub === '__MX__' : r.hub === hub);
-    const fMapD = {};
-    fdRows.forEach(r => { fMapD[r.fecha] = r; });
+    // Take last 8 periods: 6 historical + LWTD + WTD
+    const periods = dataA.slice(-8);
+    const n       = periods.length;
+    const hist    = periods.slice(0, n - 2);   // historical context
+    const lwtd    = periods[n - 2];             // last full week
+    const wtd     = periods[n - 1];             // current WTD
 
-    const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    const fmtDate = iso => { const d = new Date(iso+'T12:00:00'); return `${DAYS_ES[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`; };
+    const getVal = (m, d) => {
+      if (!d) return null;
+      const e = eMap[d.semana] || {};
+      if (m.valA) return m.valA(d);
+      if (m.valF) return fMap[fKey(d.semana)] ? m.valF(fMap[fKey(d.semana)]) : 0;
+      if (m.valE) return typeof m.valE === 'function' && m.valE.length === 2
+        ? m.valE(d, e) : m.valE(e);
+      return null;
+    };
 
-    const rows = targets.map((fecha, i) => {
-      const d  = dayMap[fecha] || {};
-      const vt = d.ventas_total||0, vf=d.ventas_fin||0, vc=d.ventas_cash||0;
-      const ct = d.cancel_total||0, cf=d.cancel_fin||0, cc=d.cancel_cash||0;
-      const strFin   = safeDiv(vf, vf+cf)*100;
-      const strCash  = safeDiv(vc, vc+cc)*100;
-      const strTotal = safeDiv(vt, vt+ct)*100;
-      const mixFin   = safeDiv(vf+cf, vt+ct)*100;
-      const cfB = strColor(strFin,'fin'), ccB = strColor(strCash,'cash'), ctB = strColor(strTotal,'total');
-      const fW = fMapD[fecha] || {ho_total:0, app_total:0};
-      const label = i === 0 ? `Ayer&nbsp;<small style="font-weight:normal;color:#888">(${fmtDate(fecha)})</small>` : fmtDate(fecha);
-      return `<tr${i===0?' style="font-weight:600"':''}>
-        <td>${label}</td>
-        <td>${fmtN(d.reservas_netas||0)}</td>
-        <td>${fmtN(d.reservas_netas_fin||0)}</td>
-        <td>${fmtN(d.reservas_netas_cash||0)}</td>
-        <td>${fmtN(fW.ho_total)}</td><td>${fmtN(fW.app_total)}</td>
-        <td>${fmtN(vt)}</td>
-        <td>${fmtN(ct)}</td>
-        <td><span class="badge ${ctB}">${fmt1(strTotal)}</span></td>
-        <td><span class="badge ${cfB}">${fmt1(strFin)}</span></td>
-        <td><span class="badge ${ccB}">${fmt1(strCash)}</span></td>
-        <td>${fmt1(mixFin)}</td>
+    // Header: historical labels + LWTD + WTD + Δ
+    const hdrHist = hist.map(d =>
+      `<th class="col-hist">${chartLabel(d.semana)}</th>`).join('');
+    const hdrLwtd = `<th class="col-lwtd">${chartLabel(lwtd.semana)}<br><small>LWTD</small></th>`;
+    const hdrWtd  = `<th class="col-wtd">WTD<br><small>${chartLabel(wtd.semana)}–</small></th>`;
+    const hdrDelta = `<th class="col-delta">Δ WoW</th>`;
+
+    const rows = METRICS.map(m => {
+      const histCells = hist.map(d => {
+        const v = getVal(m, d);
+        return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
+      }).join('');
+
+      const vLwtd = getVal(m, lwtd);
+      const vWtd  = getVal(m, wtd);
+      const lwtdBadge = vLwtd === null ? '—' : m.type === 'str'
+        ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
+        : fmtN(vLwtd);
+      const wtdBadge  = vWtd === null ? '—' : m.type === 'str'
+        ? `<span class="badge ${strColor(vWtd,  m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
+        : fmtN(vWtd);
+
+      const delta = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
+        ? m.type === 'str'
+          ? vWtd - vLwtd
+          : (vWtd - vLwtd) / Math.abs(vLwtd) * 100
+        : null;
+
+      const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
+        ? ' class="row-sep"' : '';
+
+      return `<tr${separator}>
+        <td class="metric-label"><strong>${m.label}</strong></td>
+        ${histCells}
+        <td class="col-lwtd-val">${lwtdBadge}</td>
+        <td class="col-wtd-val">${wtdBadge}</td>
+        ${fmtDelta(delta, m)}
       </tr>`;
     });
 
+    const thead = `<thead><tr>
+      <th class="metric-label">Métrica</th>
+      ${hdrHist}${hdrLwtd}${hdrWtd}${hdrDelta}
+    </tr></thead>`;
+
     document.getElementById('detail-table-wrap').innerHTML = `
-      <table>
-        <thead><tr>
-          <th>Fecha <small style="font-weight:normal;opacity:.7">(mismo día × 7 sem)</small></th>
-          <th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
-          <th>HOs</th><th>Aprob.</th>
-          <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
-        </tr></thead>
+      <table class="detail-pivot">
+        ${thead}
         <tbody>${rows.join('')}</tbody>
       </table>`;
     return;
   }
 
-  // ── Semanal / Mensual ──────────────────────────────────────────────────────
-  const dataA = getAggData().slice(-7).reverse(); // rawA_w — reservation date
-  const dataE = getAggDataE().slice(-7).reverse(); // rawE_w — close date + estimate_flag (STR)
+  // ── DIARIO: mismo día × 7 semanas ─────────────────────────────────────────
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const yest   = new Date(today); yest.setDate(today.getDate() - 1);
 
-  const eMap = {};
-  dataE.forEach(d => eMap[d.semana] = d);
+  // Build 8 target dates: LD, LD-1, LD-2 … LD-7 (oldest → newest)
+  const targets = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(yest); d.setDate(yest.getDate() - i * 7);
+    targets.push(d.toISOString().slice(0, 10));
+  }
 
-  // Aggregate rawFunnelFin (HOs + Aprobaciones) respecting hub + granularity
-  const hub = currentHub;
-  const fRows = hub === '__MX__' ? rawFunnelFin : rawFunnelFin.filter(r => r.hub === hub);
-  const fMap  = {};
-  fRows.forEach(r => {
-    const key = currentGran === 'mensual' ? r.semana.slice(0,7) : r.semana;
-    if (!fMap[key]) fMap[key] = {ho_total:0, app_total:0};
-    fMap[key].ho_total  += r.ho_total;
-    fMap[key].app_total += r.app_total;
+  // rawDaily map by fecha
+  const dayMap = {};
+  rawDaily.forEach(r => {
+    if (!targets.includes(r.fecha)) return;
+    if (hub !== '__MX__' && r.hub !== hub) return;
+    if (hub === '__MX__'  && r.hub !== '__MX__') return;
+    dayMap[r.fecha] = r;
   });
-  const getFunnelKey = semana => currentGran === 'mensual' ? semana.slice(0,7) : semana;
 
-  const rows = dataA.map(d => {
-    const e = eMap[d.semana] || {ventas_total:0,ventas_fin:0,ventas_cash:0,cancel_total:0,cancel_fin:0,cancel_cash:0};
-    const f = fMap[getFunnelKey(d.semana)] || {ho_total:0, app_total:0};
-    const strFin   = safeDiv(e.ventas_fin,   e.ventas_fin   + e.cancel_fin)*100;
-    const strCash  = safeDiv(e.ventas_cash,  e.ventas_cash  + e.cancel_cash)*100;
-    const strTotal = safeDiv(e.ventas_total, e.ventas_total + e.cancel_total)*100;
-    const mixFin   = safeDiv(e.ventas_fin + e.cancel_fin, e.ventas_total + e.cancel_total)*100;
-    const cf = strColor(strFin,'fin'), cc = strColor(strCash,'cash'), ct = strColor(strTotal,'total');
-    return `<tr>
-      <td>${chartLabel(d.semana)}</td>
-      <td>${fmtN(d.reservas_netas)}</td>
-      <td>${fmtN(d.reservas_netas_fin)}</td>
-      <td>${fmtN(d.reservas_netas_cash)}</td>
-      <td>${fmtN(f.ho_total)}</td>
-      <td>${fmtN(f.app_total)}</td>
-      <td>${fmtN(e.ventas_total)}</td>
-      <td>${fmtN(e.cancel_total)}</td>
-      <td><span class="badge ${ct}">${fmt1(strTotal)}</span></td>
-      <td><span class="badge ${cf}">${fmt1(strFin)}</span></td>
-      <td><span class="badge ${cc}">${fmt1(strCash)}</span></td>
-      <td>${fmt1(mixFin)}</td>
+  // rawFunnelFinDaily map by fecha
+  const fdRows = rawFunnelFinDaily.filter(
+    r => hub === '__MX__' ? r.hub === '__MX__' : r.hub === hub
+  );
+  const fdMap = {};
+  fdRows.forEach(r => { fdMap[r.fecha] = r; });
+
+  const getValD = (m, fecha) => {
+    const d = dayMap[fecha] || {};
+    const f = fdMap[fecha] || {};
+    if (m.valA)                          return d[Object.keys(d).find(k => m.valA({[k]:d[k]}) !== undefined)] ?? m.valA(d);
+    if (m.valF)                          return m.valF(f);
+    if (m.valE && m.valE.length === 2)   return m.valE(d, d);  // use rawDaily for STR approx
+    if (m.valE)                          return m.valE(d);
+    return null;
+  };
+
+  // Simpler getVal for diario
+  const getDailyVal = (m, fecha) => {
+    const d  = dayMap[fecha]  || {};
+    const fd = fdMap[fecha]   || {};
+    if (m.id === 'res_netas')  return d.reservas_netas     || 0;
+    if (m.id === 'netas_fin')  return d.reservas_netas_fin || 0;
+    if (m.id === 'netas_cash') return d.reservas_netas_cash|| 0;
+    if (m.id === 'hos')        return fd.ho_total  || 0;
+    if (m.id === 'aprob')      return fd.app_total || 0;
+    if (m.id === 'ventas')     return d.ventas_total  || 0;
+    if (m.id === 'cancels')    return d.cancel_total  || 0;
+    if (m.id === 'str_total')  return safeDiv(d.ventas_total, d.ventas_total + d.cancel_total)*100;
+    if (m.id === 'str_fin')    return safeDiv(d.ventas_fin,   d.ventas_fin   + d.cancel_fin  )*100;
+    if (m.id === 'str_cash')   return safeDiv(d.ventas_cash,  d.ventas_cash  + d.cancel_cash )*100;
+    if (m.id === 'mix_fin')    return safeDiv(d.ventas_fin + d.cancel_fin, d.ventas_total + d.cancel_total)*100;
+    return 0;
+  };
+
+  const DAYS_ES2 = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const fmtD = iso => { const d = new Date(iso+'T12:00:00'); return `${DAYS_ES2[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`; };
+
+  const hist   = targets.slice(0, 6);   // 6 historical
+  const ldPrev = targets[6];            // LD-1
+  const ld     = targets[7];            // Ayer (LD)
+
+  const hdrHist  = hist.map(f => `<th class="col-hist">${fmtD(f)}</th>`).join('');
+  const hdrLd1   = `<th class="col-lwtd">${fmtD(ldPrev)}<br><small>LD-1</small></th>`;
+  const hdrLd    = `<th class="col-wtd">Ayer<br><small>${fmtD(ld)}</small></th>`;
+  const hdrDelta = `<th class="col-delta">Δ vs LD-1</th>`;
+
+  const rows = METRICS.map(m => {
+    const histCells = hist.map(f => {
+      const v = getDailyVal(m, f);
+      return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
+    }).join('');
+
+    const vLd1 = getDailyVal(m, ldPrev);
+    const vLd  = getDailyVal(m, ld);
+    const ld1Badge = vLd1 === null ? '—' : m.type === 'str'
+      ? `<span class="badge ${strColor(vLd1, m.id.replace('str_',''))||''}">${fmt1(vLd1)}</span>`
+      : fmtN(vLd1);
+    const ldBadge  = vLd === null ? '—' : m.type === 'str'
+      ? `<span class="badge ${strColor(vLd,  m.id.replace('str_',''))||''}">${fmt1(vLd)}</span>`
+      : fmtN(vLd);
+
+    const delta = (vLd !== null && vLd1 !== null && vLd1 !== 0)
+      ? m.type === 'str'
+        ? vLd - vLd1
+        : (vLd - vLd1) / Math.abs(vLd1) * 100
+      : null;
+
+    const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
+      ? ' class="row-sep"' : '';
+
+    return `<tr${separator}>
+      <td class="metric-label"><strong>${m.label}</strong></td>
+      ${histCells}
+      <td class="col-lwtd-val">${ld1Badge}</td>
+      <td class="col-wtd-val">${ldBadge}</td>
+      ${fmtDelta(delta, m)}
     </tr>`;
   });
+
   document.getElementById('detail-table-wrap').innerHTML = `
-    <table>
+    <table class="detail-pivot">
       <thead><tr>
-        <th>Período</th>
-        <th>Res. Netas</th><th>Netas Fin</th><th>Netas Cash</th>
-        <th>HOs</th><th>Aprob.</th>
-        <th>Ventas</th><th>Cancels</th><th>STR Total</th><th>STR Fin</th><th>STR Cash</th><th>Mix Fin%</th>
+        <th class="metric-label">Métrica</th>
+        ${hdrHist}${hdrLd1}${hdrLd}${hdrDelta}
       </tr></thead>
       <tbody>${rows.join('')}</tbody>
     </table>`;
 }
-
 // ═══════════════════════════════════════════════════════════
 // COHORT CHART
 // ═══════════════════════════════════════════════════════════
