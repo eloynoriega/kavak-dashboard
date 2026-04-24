@@ -2,13 +2,20 @@
 # ══════════════════════════════════════════════════════════════
 #  actualiza_performance.sh
 #  Uso: bash actualiza_performance.sh
-#  Actualiza los 3 dashboards de Kavak MX y publica en GitHub:
+#  Actualiza los 2 dashboards de Kavak MX y publica en GitHub:
 #    1. STR Performance Dashboard  (kavak_str_dashboard_v2.html)
-#    2. Pipeline & Backlog         (index.html)
-#    3. Pipeline Supervisor/Cobro  (pipeline_supervisor_YYYY.html)
+#    2. Métricas de Contacto       (index.html)
 # ══════════════════════════════════════════════════════════════
 
 FETCH_ERRORS=0
+
+# ── Lockfile: solo corre UNA vez por día calendario ──────────────────────────
+LOCKFILE="/tmp/kavak_dashboard_last_run"
+TODAY=$(date '+%Y-%m-%d')
+if [ -f "$LOCKFILE" ] && [ "$(cat $LOCKFILE)" = "$TODAY" ]; then
+  echo "ℹ️  Ya corrió hoy ($TODAY) — saltando. Borra $LOCKFILE para forzar."
+  exit 0
+fi
 
 DIR="/Users/choloynoriega/Documents/Kavak Claude V1"
 HTML_SRC="/Users/choloynoriega/Desktop/kavak_str_dashboard_v2.html"
@@ -18,7 +25,7 @@ LOG="/tmp/actualiza_performance_$(date +%Y%m%d_%H%M).log"
 cd "$DIR"
 
 echo "════════════════════════════════════════"
-echo "  Kavak MX — Actualizando 3 dashboards"
+echo "  Kavak MX — Actualizando 2 dashboards"
 echo "  $(date '+%Y-%m-%d %H:%M')"
 echo "════════════════════════════════════════"
 echo ""
@@ -35,7 +42,7 @@ run_safe() {
 }
 
 # ── 1. Fetch datos (paralelo, dim_str al final para evitar cancelación) ──────
-echo "── Fetching datos desde Redshift ──"
+echo "── Fetching datos desde Databricks ──"
 ( python3 "$DIR/fetch_backlog_summary.py"         >> "$LOG" 2>&1 ) & PID1=$!
 ( python3 "$DIR/fetch_sla_drilldown.py"          >> "$LOG" 2>&1 ) & PID2=$!
 ( python3 "$DIR/fetch_cohort_str.py"             >> "$LOG" 2>&1 ) & PID3=$!
@@ -76,8 +83,8 @@ run "Todos los demás datos (STR KPIs, cohorts, etc.)" "inject_all_data.py"
 run "Funnel Financing"               "inject_funnel_fin.py"
 echo ""
 
-# ── 3. Publicar STR Dashboard en GitHub ──────────────────────────────────────
-echo "── [1/3] STR Performance Dashboard ──"
+# ── 3. Publicar STR Performance Dashboard ────────────────────────────────────
+echo "── [1/2] STR Performance Dashboard ──"
 cp "$HTML_SRC" "$HTML_DEST"
 git add kavak_str_dashboard_v2.html
 git commit -m "STR Performance update $(date '+%Y-%m-%d %H:%M')" --quiet
@@ -85,34 +92,30 @@ git push origin main --quiet
 echo "  ✅ STR Dashboard publicado"
 echo ""
 
-
-# ── 4. Pipeline & Backlog Dashboard (index.html) ──────────────────────────────
-echo "── [2/3] Pipeline & Backlog Dashboard ──"
-run_safe "Pipeline & Backlog (index.html)" "generate_pipeline_dashboard.py"
+# ── 4. Métricas de Contacto Dashboard (index.html) ───────────────────────────
+echo "── [2/2] Métricas de Contacto Dashboard ──"
+run_safe "Métricas de Contacto (index.html)" "generate_pipeline_dashboard.py"
 if git diff --quiet index.html 2>/dev/null; then
   echo "  ℹ️  Sin cambios en index.html"
 else
   git add index.html >> "$LOG" 2>&1
-  git commit -m "Pipeline Backlog update $(date '+%Y-%m-%d %H:%M')" --quiet >> "$LOG" 2>&1 \
+  git commit -m "Métricas de Contacto update $(date '+%Y-%m-%d %H:%M')" --quiet >> "$LOG" 2>&1 \
     && git push origin main --quiet >> "$LOG" 2>&1 \
-    && echo "  ✅ Pipeline & Backlog publicado" \
-    || echo "  ⚠️  Error publicando Pipeline Backlog — ver $LOG"
+    && echo "  ✅ Métricas de Contacto publicado" \
+    || echo "  ⚠️  Error publicando Métricas de Contacto — ver $LOG"
 fi
 echo ""
 
-# ── 5. Pipeline Supervisor / Cobro ────────────────────────────────────────────
-echo "── [3/3] Pipeline Supervisor / Cobro ──"
-run_safe "Pipeline Supervisor/Cobro" "pipeline_cobro_v2.py"
-# pipeline_cobro_v2.py maneja su propio git push a cobro-main — no hay que hacer nada más
-echo ""
-
-# ── 6. Slack alert diagnóstico ────────────────────────────────────────────────
+# ── 5. Slack alert diagnóstico ────────────────────────────────────────────────
 echo "── Slack alert ──"
 python3 "$DIR/alert_slack.py" 2>&1 | tee -a "$LOG" | grep -E "✅|⚠|❌"
 
+# Registrar que ya corrió hoy
+echo "$TODAY" > "$LOCKFILE"
+
 echo "════════════════════════════════════════"
-echo "  ✅ 3 dashboards actualizados"
+echo "  ✅ 2 dashboards actualizados"
 echo "  🔗 STR:      https://eloynoriega.github.io/kavak-dashboard/kavak_str_dashboard_v2.html"
-echo "  🔗 Pipeline: https://eloynoriega.github.io/kavak-dashboard/"
+echo "  🔗 Contacto: https://eloynoriega.github.io/kavak-dashboard/"
 echo "  📋 Log: $LOG"
 echo "════════════════════════════════════════"
