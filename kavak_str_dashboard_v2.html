@@ -143,14 +143,15 @@
 
   /* ── Detalle Semanal pivot table ── */
   .detail-pivot { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .detail-pivot thead th { background: var(--navy); color: #fff; padding: 8px 10px; text-align: right; font-weight: 600; font-size: 11px; white-space: nowrap; }
+  .detail-pivot thead th { background: var(--navy); color: #fff; padding: 8px 10px; text-align: center; font-weight: 600; font-size: 11px; white-space: nowrap; }
   .detail-pivot thead th.metric-label { text-align: left; min-width: 90px; }
-  .detail-pivot tbody td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
+  .detail-pivot tbody td { padding: 7px 10px; text-align: center; border-bottom: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
   .detail-pivot tbody td.metric-label { text-align: left; font-weight: 700; font-size: 12px; color: var(--navy); }
   .detail-pivot tbody tr:hover td { background: #f0f4f8; }
-  .detail-pivot .col-lwtd, .detail-pivot .col-lwtd-val,
-  .detail-pivot .col-wtd,  .detail-pivot .col-wtd-val   { background: rgba(20,50,90,.04); }
-  .detail-pivot .col-delta { background: rgba(20,50,90,.07); font-weight: 600; }
+  .detail-pivot tbody .col-lwtd-val,
+  .detail-pivot tbody .col-wtd-val  { background: rgba(20,50,90,.04); }
+  .detail-pivot tbody .col-wow      { background: rgba(20,50,90,.04); font-weight: 600; }
+  .detail-pivot tbody .col-delta    { background: rgba(20,50,90,.07); font-weight: 600; }
   .detail-pivot .row-sep td { border-top: 2px solid var(--teal); }
   .delta-good { color: #1a6640; font-weight: 700; }
   .delta-bad  { color: #8b1a1a; font-weight: 700; }
@@ -1940,8 +1941,8 @@ function renderDetailTable() {
   ];
 
   const hub = currentHub;
-  const fmtDelta = (delta, m, pct=true) => {
-    if (delta === null || isNaN(delta)) return '<td class="delta-cell">—</td>';
+  const fmtDelta = (delta, m, extraCls='') => {
+    if (delta === null || isNaN(delta)) return `<td class="delta-cell ${extraCls}">—</td>`;
     const isStr  = m.type === 'str';
     const isGood = m.goodUp === null ? null : (m.goodUp ? delta > 0 : delta < 0);
     const cls    = isGood === null ? '' : isGood ? 'delta-good' : 'delta-bad';
@@ -1949,7 +1950,7 @@ function renderDetailTable() {
     const val    = isStr
       ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pp`
       : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
-    return `<td class="delta-cell ${cls}">${arrow} ${val}</td>`;
+    return `<td class="delta-cell ${extraCls} ${cls}">${arrow} ${val}</td>`;
   };
 
   // ── SEMANAL / MENSUAL ─────────────────────────────────────────────────────
@@ -1988,12 +1989,14 @@ function renderDetailTable() {
       return null;
     };
 
-    // Header: historical labels + LWTD + WTD + Δ
-    const hdrHist = hist.map(d =>
-      `<th class="col-hist">${chartLabel(d.semana)}</th>`).join('');
-    const hdrLwtd = `<th class="col-lwtd">${chartLabel(lwtd.semana)}<br><small>LWTD</small></th>`;
-    const hdrWtd  = `<th class="col-wtd">WTD<br><small>${chartLabel(wtd.semana)}–</small></th>`;
-    const hdrDelta = `<th class="col-delta">Δ WoW</th>`;
+    // Header: [hist] | Δ WoW | WTD | LWTD | Δ vs LWTD  (mismo orden que STR por Dimensión)
+    const prevHist = hist.at(-1);   // última semana cerrada antes de LWTD
+    const hdrHist  = hist.map(d =>
+      `<th>${chartLabel(d.semana)}</th>`).join('');
+    const hdrWow   = `<th class="col-wow">Δ WoW<br><small>sem.cerrada</small></th>`;
+    const hdrWtd   = `<th class="col-wtd">WTD<br><small>${chartLabel(wtd.semana)}–</small></th>`;
+    const hdrLwtd  = `<th class="col-lwtd">LWTD<br><small>${chartLabel(lwtd.semana)}</small></th>`;
+    const hdrDelta = `<th class="col-delta">Δ vs LWTD</th>`;
 
     const rows = METRICS.map(m => {
       const histCells = hist.map(d => {
@@ -2001,20 +2004,26 @@ function renderDetailTable() {
         return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
       }).join('');
 
+      const vPrev = getVal(m, prevHist);   // penúltima semana (para Δ WoW sem.cerrada)
       const vLwtd = getVal(m, lwtd);
       const vWtd  = getVal(m, wtd);
-      const lwtdBadge = vLwtd === null ? '—' : m.type === 'str'
-        ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
-        : fmtN(vLwtd);
+
+      // Δ WoW = última semana cerrada (LWTD) vs la anterior (prevHist)
+      const deltaWow = (vLwtd !== null && vPrev !== null && vPrev !== 0)
+        ? m.type === 'str' ? vLwtd - vPrev : (vLwtd - vPrev) / Math.abs(vPrev) * 100
+        : null;
+
+      // Δ vs LWTD = WTD vs LWTD (manzanas-con-manzanas)
+      const deltaVsLwtd = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
+        ? m.type === 'str' ? vWtd - vLwtd : (vWtd - vLwtd) / Math.abs(vLwtd) * 100
+        : null;
+
       const wtdBadge  = vWtd === null ? '—' : m.type === 'str'
         ? `<span class="badge ${strColor(vWtd,  m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
         : fmtN(vWtd);
-
-      const delta = (vWtd !== null && vLwtd !== null && vLwtd !== 0)
-        ? m.type === 'str'
-          ? vWtd - vLwtd
-          : (vWtd - vLwtd) / Math.abs(vLwtd) * 100
-        : null;
+      const lwtdBadge = vLwtd === null ? '—' : m.type === 'str'
+        ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
+        : fmtN(vLwtd);
 
       const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
         ? ' class="row-sep"' : '';
@@ -2022,15 +2031,16 @@ function renderDetailTable() {
       return `<tr${separator}>
         <td class="metric-label"><strong>${m.label}</strong></td>
         ${histCells}
-        <td class="col-lwtd-val">${lwtdBadge}</td>
+        ${fmtDelta(deltaWow, m, 'col-wow')}
         <td class="col-wtd-val">${wtdBadge}</td>
-        ${fmtDelta(delta, m)}
+        <td class="col-lwtd-val">${lwtdBadge}</td>
+        ${fmtDelta(deltaVsLwtd, m)}
       </tr>`;
     });
 
     const thead = `<thead><tr>
       <th class="metric-label">Métrica</th>
-      ${hdrHist}${hdrLwtd}${hdrWtd}${hdrDelta}
+      ${hdrHist}${hdrWow}${hdrWtd}${hdrLwtd}${hdrDelta}
     </tr></thead>`;
 
     document.getElementById('detail-table-wrap').innerHTML = `
@@ -2103,9 +2113,12 @@ function renderDetailTable() {
   const ldPrev = targets[6];            // LD-1
   const ld     = targets[7];            // Ayer (LD)
 
-  const hdrHist  = hist.map(f => `<th class="col-hist">${fmtD(f)}</th>`).join('');
-  const hdrLd1   = `<th class="col-lwtd">${fmtD(ldPrev)}<br><small>LD-1</small></th>`;
+  // Δ WoW diario: LD-1 vs hist.at(-1) (mismo día, semana anterior vs la de antes)
+  const ldPrevPrev = hist.at(-1);  // mismo día 2 semanas atrás
+  const hdrHist  = hist.map(f => `<th>${fmtD(f)}</th>`).join('');
+  const hdrWow   = `<th class="col-wow">Δ WoW<br><small>sem.cerrada</small></th>`;
   const hdrLd    = `<th class="col-wtd">Ayer<br><small>${fmtD(ld)}</small></th>`;
+  const hdrLd1   = `<th class="col-lwtd">LD-1<br><small>${fmtD(ldPrev)}</small></th>`;
   const hdrDelta = `<th class="col-delta">Δ vs LD-1</th>`;
 
   const rows = METRICS.map(m => {
@@ -2114,20 +2127,26 @@ function renderDetailTable() {
       return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
     }).join('');
 
+    const vPrevPrev = getDailyVal(m, ldPrevPrev);   // mismo día 2 semanas atrás
     const vLd1 = getDailyVal(m, ldPrev);
     const vLd  = getDailyVal(m, ld);
-    const ld1Badge = vLd1 === null ? '—' : m.type === 'str'
-      ? `<span class="badge ${strColor(vLd1, m.id.replace('str_',''))||''}">${fmt1(vLd1)}</span>`
-      : fmtN(vLd1);
+
+    // Δ WoW = LD-1 vs hist.at(-1)
+    const deltaWow = (vLd1 !== null && vPrevPrev !== null && vPrevPrev !== 0)
+      ? m.type === 'str' ? vLd1 - vPrevPrev : (vLd1 - vPrevPrev) / Math.abs(vPrevPrev) * 100
+      : null;
+
+    // Δ vs LD-1 = Ayer vs mismo día semana pasada
+    const delta = (vLd !== null && vLd1 !== null && vLd1 !== 0)
+      ? m.type === 'str' ? vLd - vLd1 : (vLd - vLd1) / Math.abs(vLd1) * 100
+      : null;
+
     const ldBadge  = vLd === null ? '—' : m.type === 'str'
       ? `<span class="badge ${strColor(vLd,  m.id.replace('str_',''))||''}">${fmt1(vLd)}</span>`
       : fmtN(vLd);
-
-    const delta = (vLd !== null && vLd1 !== null && vLd1 !== 0)
-      ? m.type === 'str'
-        ? vLd - vLd1
-        : (vLd - vLd1) / Math.abs(vLd1) * 100
-      : null;
+    const ld1Badge = vLd1 === null ? '—' : m.type === 'str'
+      ? `<span class="badge ${strColor(vLd1, m.id.replace('str_',''))||''}">${fmt1(vLd1)}</span>`
+      : fmtN(vLd1);
 
     const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
       ? ' class="row-sep"' : '';
@@ -2135,8 +2154,9 @@ function renderDetailTable() {
     return `<tr${separator}>
       <td class="metric-label"><strong>${m.label}</strong></td>
       ${histCells}
-      <td class="col-lwtd-val">${ld1Badge}</td>
+      ${fmtDelta(deltaWow, m, 'col-wow')}
       <td class="col-wtd-val">${ldBadge}</td>
+      <td class="col-lwtd-val">${ld1Badge}</td>
       ${fmtDelta(delta, m)}
     </tr>`;
   });
@@ -2145,7 +2165,7 @@ function renderDetailTable() {
     <table class="detail-pivot">
       <thead><tr>
         <th class="metric-label">Métrica</th>
-        ${hdrHist}${hdrLd1}${hdrLd}${hdrDelta}
+        ${hdrHist}${hdrWow}${hdrLd}${hdrLd1}${hdrDelta}
       </tr></thead>
       <tbody>${rows.join('')}</tbody>
     </table>`;
