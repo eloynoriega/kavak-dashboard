@@ -2312,31 +2312,44 @@ function renderCohortChart() {
     });
   }
 
-  // Forecast: use last cohort that has at least D4 observed (idx>=4), skip micro-cohorts
-  const lastCohort = nonAvg[nonAvg.length - 1];
-  const forecastCohort = [...nonAvg].reverse().find(c => {
-    const idx = xKeys.map((k,i) => c[k] != null ? i : -1).filter(i=>i>=0).pop() ?? -1;
-    return idx >= 4; // need at least D4
-  }) || lastCohort;
-  if (forecastCohort && avg) {
-    const lastKnownIdx = xKeys.map((k,i) => forecastCohort[k] != null ? i : -1).filter(i=>i>=0).pop();
-    if (lastKnownIdx != null && lastKnownIdx < xKeys.length - 1) {
-      const scale = forecastCohort[xKeys[lastKnownIdx]] / (avg[xKeys[lastKnownIdx]] || 1);
-      const forecastData = xKeys.map((k, i) => {
-        if (i <= lastKnownIdx) return null;
+  // Proyección para cohorts jóvenes (pct_act > 5%)
+  // Anchor: último bucket donde elapsed >= minDays + 3 (la semana completa contribuyó ~razonablemente)
+  // Scale = c[anchor] / avg[anchor], luego proyectar buckets futuros con avg * scale
+  if (avg) {
+    const _todayFc = new Date(); _todayFc.setHours(0,0,0,0);
+    nonAvg.filter(c => (c.pct_act || 0) > 5).forEach(fc => {
+      const elapsed = Math.floor((_todayFc - new Date(fc.iso + 'T12:00:00')) / 86400000);
+      // Anchor: último bucket donde elapsed >= minDays + 3 (buffer para que la semana contribuya)
+      let anchorIdx = -1;
+      xKeys.forEach((k, i) => { if (elapsed >= (_xKeyMinDays[k]||0) + 3) anchorIdx = i; });
+      // Fallback si ninguno califica (cohort muy joven): usar elapsed >= minDays
+      if (anchorIdx < 0) xKeys.forEach((k, i) => { if (elapsed >= (_xKeyMinDays[k]||0)) anchorIdx = i; });
+      if (anchorIdx < 0 || anchorIdx >= xKeys.length - 1) return;
+      const anchorKey = xKeys[anchorIdx];
+      if (!avg[anchorKey] || !fc[anchorKey]) return;
+
+      const scale     = fc[anchorKey] / avg[anchorKey];
+      const projFinal = avg['D16_30'] != null ? +(avg['D16_30'] * scale).toFixed(0) : null;
+      const isEarly   = elapsed < 10; // menos de 10 días — estimación muy temprana
+
+      const fcData = xKeys.map((k, i) => {
+        if (i <= anchorIdx) return null;
         return avg[k] != null ? +(avg[k] * scale).toFixed(1) : null;
       });
+      const baseColor = datasets.find(d => d.label === fc.cohort)?.borderColor || '#999';
       datasets.push({
-        label: `${forecastCohort.cohort} → forecast ~${(avg['D16_30']||0)*scale > 0 ? ((avg['D16_30']||0)*scale).toFixed(0) : '?'}%`,
-        data: forecastData,
-        borderColor: datasets.find(d=>d.label===forecastCohort.cohort)?.borderColor || '#e74c3c',
+        label: `${fc.cohort} → proy. ~${projFinal ?? '?'}%${isEarly ? ' ⚠️' : ''}`,
+        data: fcData,
+        borderColor: baseColor,
+        backgroundColor: baseColor + '22',
         borderWidth: 1.5,
         borderDash: [5, 5],
         pointRadius: 3,
+        pointStyle: 'triangle',
         tension: 0.1,
         spanGaps: false,
       });
-    }
+    });
   }
 
   // Promedio shown in table only, not chart (Best Week line used instead)
