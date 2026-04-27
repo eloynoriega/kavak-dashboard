@@ -3249,7 +3249,6 @@ function refreshAll() {
   renderBacklogSummary();
   renderCohortEntregaChart();
   renderCancelChart();
-  renderNPSSection();
   renderFunnelFin();
   renderFunnelSLA();
   renderFunnelDictamen();
@@ -3509,6 +3508,10 @@ function renderFunnelFin() {
   }
 
   const P = _funnelPeriod(rawFunnelFin,'semana');
+  // When no current-week data exists (start of new week), compare lastW vs prevW
+  const _noNewData = P.curW === P.lastW;
+  const _cmpW = _noNewData ? P.lastW : P.curW;
+  const _prvW = _noNewData ? P.prevW : P.lastW;
 
   let cur,prv,curVta,prvVta,periodLabel;
   if(gran==='mensual'){
@@ -3518,26 +3521,26 @@ function renderFunnelFin() {
     prvVta =aggPeriod(rawFunnelFinLMTD,emptyV,addV);
     periodLabel='MTD vs LMTD'; _vsLbl='vs LMTD';
   } else if(gran==='diario'){
-    // Diario: WTD vs LWTD
-    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.curW),    emptyB,addB);
-    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.lastW),   emptyB,addB);
-    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.curW), emptyV,addV);
-    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.lastW),emptyV,addV);
-    periodLabel='WTD vs LWTD'; _vsLbl='vs LWTD';
+    // Diario: current week vs prev week (fallback to lastW vs prevW if no new data)
+    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===_cmpW),    emptyB,addB);
+    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===_prvW),    emptyB,addB);
+    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_cmpW), emptyV,addV);
+    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_prvW), emptyV,addV);
+    periodLabel=_noNewData?'Sem ant. vs prev.':'WTD vs LWTD'; _vsLbl=_noNewData?'vs sem. ant.':'vs LWTD';
   } else {
-    // Semanal: WTD vs LWTD
-    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.curW),    emptyB,addB);
-    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===P.lastW),   emptyB,addB);
-    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.curW), emptyV,addV);
-    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===P.lastW),emptyV,addV);
-    periodLabel='WTD vs LWTD'; _vsLbl='vs LWTD';
+    // Semanal: WTD vs LWTD (fallback to lastW vs prevW if no new data)
+    cur    =aggPeriod(rawFunnelFin.filter(r=>r.semana===_cmpW),    emptyB,addB);
+    prv    =aggPeriod(rawFunnelFin.filter(r=>r.semana===_prvW),    emptyB,addB);
+    curVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_cmpW), emptyV,addV);
+    prvVta =aggPeriod(rawFunnelFinVta.filter(r=>r.semana===_prvW), emptyV,addV);
+    periodLabel=_noNewData?'Sem ant. vs prev.':'WTD vs LWTD'; _vsLbl=_noNewData?'vs sem. ant.':'vs LWTD';
   }
 
   // Sub text (only total mode)
   let subHO='',subAPP='',subVTA='';
   if(tiMode==='total'){
-    const srcR  = gran==='mensual'?rawFunnelFinMTD :rawFunnelFin.filter(r=>r.semana===P.curW);
-    const srcVR = gran==='mensual'?rawFunnelFinMTD :rawFunnelFinVta.filter(r=>r.semana===P.curW);
+    const srcR  = gran==='mensual'?rawFunnelFinMTD :rawFunnelFin.filter(r=>r.semana===_cmpW);
+    const srcVR = gran==='mensual'?rawFunnelFinMTD :rawFunnelFinVta.filter(r=>r.semana===_cmpW);
     const sin={ho:0,cnh:0,app:0,cna:0},con={ho:0,cnh:0,app:0,cna:0};
     srcR.forEach(r=>{
       if(hub!=='__MX__'&&r.hub!==hub) return;
@@ -3895,7 +3898,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCohortEntregaChart();
   renderPrePost();
   renderCancelChart();
-  renderNPSSection();
   // ── "Datos al:" badge — último día disponible en rawDaily ───────────
   (function() {
     const lastFecha = rawDaily.filter(r => r.hub === '__MX__').reduce((mx, r) => r.fecha > mx ? r.fecha : mx, '');
@@ -3910,7 +3912,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFunnelSLA();
   renderFunnelDictamen();
   renderFunnelPerfil();
-  renderNPSSection();
 });
 </script>
 
