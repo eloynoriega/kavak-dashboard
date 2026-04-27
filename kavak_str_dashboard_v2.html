@@ -1939,6 +1939,21 @@ function renderDetailTable() {
       valA:null, valE:(a,e)=>safeDiv(e.ventas_cash, e.ventas_cash +e.cancel_cash )*100, valF:null },
     { id:'mix_fin',    label:'Mix Fin%',    type:'str', goodUp:null,
       valA:null, valE:(a,e)=>safeDiv(e.ventas_fin+e.cancel_fin,e.ventas_total+e.cancel_total)*100, valF:null },
+    // ── Entregas & SLA ──────────────────────────────────────────────────────────
+    { id:'gross_del',   label:'Gross Del.',      type:'vol',  goodUp:true,
+      valDay:d=>d.entregas_brutas||0 },
+    { id:'devol',       label:'Devoluciones',    type:'vol',  goodUp:false,
+      valDay:d=>(d.entregas_brutas||0)-(d.entregas_netas||0) },
+    { id:'net_del',     label:'Net Deliveries',  type:'vol',  goodUp:true,
+      valDay:d=>d.entregas_netas||0 },
+    { id:'net_kuna',    label:'Net Kuna',        type:'vol',  goodUp:true,
+      valDay:d=>d.entregas_kuna||0 },
+    { id:'share_kuna',  label:'Share Kuna%',     type:'str',  goodUp:null,
+      valDay:d=>safeDiv(d.entregas_kuna||0,d.entregas_netas||1)*100 },
+    { id:'sla_entrega', label:'SLA Vta→Ent. ≤5d',type:'str', goodUp:true,
+      valSLA:s=>safeDiv(s.g||0,s.entregas||1)*100 },
+    { id:'sla_cierre',  label:'SLA Res→Vta/Can', type:'days', goodUp:false,
+      valCierre:c=>c.cierres>0?+(c.sla_sum/c.cierres).toFixed(2):null },
   ];
 
   const hub = currentHub;
@@ -1950,8 +1965,16 @@ function renderDetailTable() {
     const arrow  = delta > 0 ? '▲' : delta < 0 ? '▼' : '';
     const val    = isStr
       ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}pp`
+      : m.type === 'days'
+      ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}d`
       : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
     return `<td class="delta-cell ${extraCls} ${cls}">${arrow} ${val}</td>`;
+  };
+
+  // Helper: ISO date → Monday of that week
+  const _mondayOf = dateStr => {
+    const d = new Date(dateStr+'T12:00:00'), dow = d.getDay();
+    d.setDate(d.getDate()-(dow===0?6:dow-1)); return d.toISOString().slice(0,10);
   };
 
   // ── SEMANAL / MENSUAL ─────────────────────────────────────────────────────
@@ -1979,13 +2002,46 @@ function renderDetailTable() {
     const prevLwtd = hist.at(-2);            // 6/4 (para ΔWoW)
     const lwtdWeek = hist.at(-1);            // 13/4 full week (para ΔWoW)
 
+    // ── Delivery week map (from rawDaily, aggregated to Monday week) ─────────
+    const dayWeekMap = {};
+    rawDaily.forEach(r => {
+      if (hub!=='__MX__'&&r.hub!==hub) return;
+      if (hub==='__MX__'&&r.hub!=='__MX__') return;
+      const sem = _mondayOf(r.fecha);
+      if (!dayWeekMap[sem]) dayWeekMap[sem]={entregas_brutas:0,entregas_netas:0,entregas_kuna:0};
+      dayWeekMap[sem].entregas_brutas+=(r.entregas_brutas||0);
+      dayWeekMap[sem].entregas_netas +=(r.entregas_netas||0);
+      dayWeekMap[sem].entregas_kuna  +=(r.entregas_kuna||0);
+    });
+    // ── SLA entrega week map (from rawSLA, hub='null'=MX) ───────────────────
+    const slaWeekMap = {};
+    rawSLA.forEach(r => {
+      if (hub==='__MX__'?r.hub!=='null':r.hub!==hub) return;
+      const sem = r.semana_entrega;
+      if (!slaWeekMap[sem]) slaWeekMap[sem]={entregas:0,g:0};
+      slaWeekMap[sem].entregas+=(r.entregas||0);
+      slaWeekMap[sem].g       +=(r.g||0);
+    });
+    // ── SLA cierre week map (from rawSLACierre, all metodos+ti) ─────────────
+    const cierreWeekMap = {};
+    rawSLACierre.forEach(r => {
+      if (hub==='__MX__'?r.hub!=='null':r.hub!==hub) return;
+      const sem = r.semana_cierre;
+      if (!cierreWeekMap[sem]) cierreWeekMap[sem]={cierres:0,sla_sum:0};
+      cierreWeekMap[sem].cierres +=(r.cierres||0);
+      cierreWeekMap[sem].sla_sum +=(r.sla_sum||0);
+    });
+
     const getVal = (m, d) => {
       if (!d) return null;
       const e = eMap[d.semana] || {};
-      if (m.valA) return m.valA(d);
-      if (m.valF) return fMap[fKey(d.semana)] ? m.valF(fMap[fKey(d.semana)]) : 0;
-      if (m.valE) return typeof m.valE === 'function' && m.valE.length === 2
-        ? m.valE(d, e) : m.valE(e);
+      if (m.valA)      return m.valA(d);
+      if (m.valF)      return fMap[fKey(d.semana)] ? m.valF(fMap[fKey(d.semana)]) : 0;
+      if (m.valE)      return typeof m.valE === 'function' && m.valE.length === 2
+                         ? m.valE(d, e) : m.valE(e);
+      if (m.valDay)    return dayWeekMap[d.semana]    ? m.valDay(dayWeekMap[d.semana])    : 0;
+      if (m.valSLA)    return slaWeekMap[d.semana]    ? m.valSLA(slaWeekMap[d.semana])    : null;
+      if (m.valCierre) return cierreWeekMap[d.semana] ? m.valCierre(cierreWeekMap[d.semana]) : null;
       return null;
     };
 
@@ -2004,10 +2060,18 @@ function renderDetailTable() {
     function _sd(dates,h){
       const r=rawDaily.filter(r=>dates.includes(r.fecha)&&(h==='__MX__'?r.hub==='__MX__':r.hub===h));
       const s={reservas_netas:0,reservas_netas_fin:0,reservas_netas_cash:0,
-               ventas_total:0,ventas_fin:0,ventas_cash:0,cancel_total:0,cancel_fin:0,cancel_cash:0};
+               ventas_total:0,ventas_fin:0,ventas_cash:0,cancel_total:0,cancel_fin:0,cancel_cash:0,
+               entregas_brutas:0,entregas_netas:0,entregas_kuna:0};
       r.forEach(x=>{Object.keys(s).forEach(k=>{s[k]+=(x[k]||0);});});
       return s;
     }
+    // SLA entrega/cierre para WTD y LWTD (weekly granularity → usar semana del lunes de esa ventana)
+    const _wtdWeek  = _wtdDates[0];
+    const _lwtdWeek = _lwtdDates[0];
+    const _wtdSLA   = slaWeekMap[_wtdWeek]   || {entregas:0,g:0};
+    const _lwtdSLA  = slaWeekMap[_lwtdWeek]  || {entregas:0,g:0};
+    const _wtdCierre= cierreWeekMap[_wtdWeek] || {cierres:0,sla_sum:0};
+    const _lwtdCierre=cierreWeekMap[_lwtdWeek]|| {cierres:0,sla_sum:0};
     function _sfd(dates,h){
       const r=rawFunnelFinDaily.filter(r=>dates.includes(r.fecha)&&(h==='__MX__'?r.hub==='__MX__':r.hub===h));
       const s={ho_total:0,app_total:0};
@@ -2016,18 +2080,25 @@ function renderDetailTable() {
     }
     const _wtdA=_sd(_wtdDates,hub), _lwtdA=_sd(_lwtdDates,hub);
     const _wtdF=_sfd(_wtdDates,hub), _lwtdF=_sfd(_lwtdDates,hub);
-    function _dsv(m,sA,sF){
-      if(m.id==='res_netas')  return sA.reservas_netas;
-      if(m.id==='netas_fin')  return sA.reservas_netas_fin;
-      if(m.id==='netas_cash') return sA.reservas_netas_cash;
-      if(m.id==='hos')        return sF.ho_total;
-      if(m.id==='aprob')      return sF.app_total;
-      if(m.id==='ventas')     return sA.ventas_total;
-      if(m.id==='cancels')    return sA.cancel_total;
-      if(m.id==='str_total')  return safeDiv(sA.ventas_total,sA.ventas_total+sA.cancel_total)*100;
-      if(m.id==='str_fin')    return safeDiv(sA.ventas_fin,  sA.ventas_fin  +sA.cancel_fin  )*100;
-      if(m.id==='str_cash')   return safeDiv(sA.ventas_cash, sA.ventas_cash +sA.cancel_cash )*100;
-      if(m.id==='mix_fin')    return safeDiv(sA.ventas_fin+sA.cancel_fin,sA.ventas_total+sA.cancel_total)*100;
+    function _dsv(m,sA,sF,sSLA={},sCierre={}){
+      if(m.id==='res_netas')   return sA.reservas_netas;
+      if(m.id==='netas_fin')   return sA.reservas_netas_fin;
+      if(m.id==='netas_cash')  return sA.reservas_netas_cash;
+      if(m.id==='hos')         return sF.ho_total;
+      if(m.id==='aprob')       return sF.app_total;
+      if(m.id==='ventas')      return sA.ventas_total;
+      if(m.id==='cancels')     return sA.cancel_total;
+      if(m.id==='str_total')   return safeDiv(sA.ventas_total,sA.ventas_total+sA.cancel_total)*100;
+      if(m.id==='str_fin')     return safeDiv(sA.ventas_fin,  sA.ventas_fin  +sA.cancel_fin  )*100;
+      if(m.id==='str_cash')    return safeDiv(sA.ventas_cash, sA.ventas_cash +sA.cancel_cash )*100;
+      if(m.id==='mix_fin')     return safeDiv(sA.ventas_fin+sA.cancel_fin,sA.ventas_total+sA.cancel_total)*100;
+      if(m.id==='gross_del')   return sA.entregas_brutas;
+      if(m.id==='devol')       return sA.entregas_brutas - sA.entregas_netas;
+      if(m.id==='net_del')     return sA.entregas_netas;
+      if(m.id==='net_kuna')    return sA.entregas_kuna;
+      if(m.id==='share_kuna')  return safeDiv(sA.entregas_kuna,sA.entregas_netas)*100;
+      if(m.id==='sla_entrega') return sSLA.entregas>0 ? safeDiv(sSLA.g,sSLA.entregas)*100 : null;
+      if(m.id==='sla_cierre')  return sCierre.cierres>0 ? +(sCierre.sla_sum/sCierre.cierres).toFixed(2) : null;
       return 0;
     }
     const _fmtRange = dates => {
@@ -2043,30 +2114,32 @@ function renderDetailTable() {
     const hdrDelta = `<th class="col-delta">Δ WTD<br><small>vs LWTD</small></th>`;
 
     const rows = METRICS.map(m => {
+      const fmtV = v => v===null?'—':m.type==='str'?fmt1(v):m.type==='days'?v.toFixed(1)+'d':fmtN(v);
+
       const histCells = hist.map(d => {
         const v = getVal(m, d);
-        return `<td>${v===null?'—':m.type==='str'?fmt1(v):fmtN(v)}</td>`;
+        return `<td>${fmtV(v)}</td>`;
       }).join('');
 
       const vPrev  = getVal(m, prevLwtd);        // 6/4 full (ΔWoW)
       const vLwtdW = getVal(m, lwtdWeek);        // 13/4 full (ΔWoW)
-      const vWtd   = _dsv(m, _wtdA, _wtdF);     // WTD daily (20-23/4)
-      const vLwtd  = _dsv(m, _lwtdA, _lwtdF);   // LWTD daily (13-17/4)
+      const vWtd   = _dsv(m, _wtdA, _wtdF, _wtdSLA, _wtdCierre);   // WTD daily (20-23/4)
+      const vLwtd  = _dsv(m, _lwtdA, _lwtdF, _lwtdSLA, _lwtdCierre); // LWTD daily (13-17/4)
 
       const deltaWow = (vLwtdW!==null&&vPrev!==null&&vPrev!==0)
-        ? m.type==='str' ? vLwtdW-vPrev : (vLwtdW-vPrev)/Math.abs(vPrev)*100 : null;
+        ? (m.type==='str'||m.type==='days') ? vLwtdW-vPrev : (vLwtdW-vPrev)/Math.abs(vPrev)*100 : null;
 
       const delta = (vWtd!==null&&vLwtd!==null&&vLwtd!==0)
-        ? m.type==='str' ? vWtd-vLwtd : (vWtd-vLwtd)/Math.abs(vLwtd)*100 : null;
+        ? (m.type==='str'||m.type==='days') ? vWtd-vLwtd : (vWtd-vLwtd)/Math.abs(vLwtd)*100 : null;
 
       const wtdBadge  = m.type==='str'
         ? `<span class="badge ${strColor(vWtd, m.id.replace('str_',''))||''}">${fmt1(vWtd)}</span>`
-        : fmtN(vWtd);
+        : fmtV(vWtd);
       const lwtdBadge = m.type==='str'
         ? `<span class="badge ${strColor(vLwtd, m.id.replace('str_',''))||''}">${fmt1(vLwtd)}</span>`
-        : fmtN(vLwtd);
+        : fmtV(vLwtd);
 
-      const separator = m.id==='cancels'||m.id==='netas_cash'||m.id==='aprob'
+      const separator = m.id==='cancels'||m.id==='netas_cash'||m.id==='aprob'||m.id==='gross_del'
         ? ' class="row-sep"' : '';
 
       return `<tr${separator}>
@@ -2119,6 +2192,24 @@ function renderDetailTable() {
   const fdMap = {};
   fdRows.forEach(r => { fdMap[r.fecha] = r; });
 
+  // SLA maps for diario (same weekly lookup as semanal)
+  const _dSlaMap = {};
+  rawSLA.forEach(r => {
+    if (hub==='__MX__'?r.hub!=='null':r.hub!==hub) return;
+    const sem = r.semana_entrega;
+    if (!_dSlaMap[sem]) _dSlaMap[sem]={entregas:0,g:0};
+    _dSlaMap[sem].entregas+=(r.entregas||0);
+    _dSlaMap[sem].g       +=(r.g||0);
+  });
+  const _dCierreMap = {};
+  rawSLACierre.forEach(r => {
+    if (hub==='__MX__'?r.hub!=='null':r.hub!==hub) return;
+    const sem = r.semana_cierre;
+    if (!_dCierreMap[sem]) _dCierreMap[sem]={cierres:0,sla_sum:0};
+    _dCierreMap[sem].cierres +=(r.cierres||0);
+    _dCierreMap[sem].sla_sum +=(r.sla_sum||0);
+  });
+
   const getValD = (m, fecha) => {
     const d = dayMap[fecha] || {};
     const f = fdMap[fecha] || {};
@@ -2144,6 +2235,21 @@ function renderDetailTable() {
     if (m.id === 'str_fin')    return safeDiv(d.ventas_fin,   d.ventas_fin   + d.cancel_fin  )*100;
     if (m.id === 'str_cash')   return safeDiv(d.ventas_cash,  d.ventas_cash  + d.cancel_cash )*100;
     if (m.id === 'mix_fin')    return safeDiv(d.ventas_fin + d.cancel_fin, d.ventas_total + d.cancel_total)*100;
+    // Delivery metrics (from rawDaily)
+    if (m.id === 'gross_del')   return d.entregas_brutas  || 0;
+    if (m.id === 'devol')       return (d.entregas_brutas||0) - (d.entregas_netas||0);
+    if (m.id === 'net_del')     return d.entregas_netas   || 0;
+    if (m.id === 'net_kuna')    return d.entregas_kuna    || 0;
+    if (m.id === 'share_kuna')  return safeDiv(d.entregas_kuna||0, d.entregas_netas||1)*100;
+    // SLA metrics (weekly lookup by the Monday of that date)
+    if (m.id === 'sla_entrega') {
+      const s = _dSlaMap[_mondayOf(fecha)] || {};
+      return s.entregas > 0 ? safeDiv(s.g, s.entregas)*100 : null;
+    }
+    if (m.id === 'sla_cierre') {
+      const c = _dCierreMap[_mondayOf(fecha)] || {};
+      return c.cierres > 0 ? +(c.sla_sum / c.cierres).toFixed(2) : null;
+    }
     return 0;
   };
 
@@ -2160,26 +2266,28 @@ function renderDetailTable() {
   const hdrDelta = `<th class="col-delta">Δ vs LD-1</th>`;
 
   const rows = METRICS.map(m => {
+    const fmtV = v => v===null?'—':m.type==='str'?fmt1(v):m.type==='days'?v.toFixed(1)+'d':fmtN(v);
+
     const histCells = hist.map(f => {
       const v = getDailyVal(m, f);
-      return `<td>${v === null ? '—' : m.type === 'str' ? fmt1(v) : fmtN(v)}</td>`;
+      return `<td>${fmtV(v)}</td>`;
     }).join('');
 
     const vLd1 = getDailyVal(m, ldPrev);
     const vLd  = getDailyVal(m, ld);
 
     const delta = (vLd !== null && vLd1 !== null && vLd1 !== 0)
-      ? m.type === 'str' ? vLd - vLd1 : (vLd - vLd1) / Math.abs(vLd1) * 100
+      ? (m.type === 'str' || m.type === 'days') ? vLd - vLd1 : (vLd - vLd1) / Math.abs(vLd1) * 100
       : null;
 
-    const ldBadge  = vLd === null ? '—' : m.type === 'str'
+    const ldBadge  = m.type === 'str' && vLd !== null
       ? `<span class="badge ${strColor(vLd,  m.id.replace('str_',''))||''}">${fmt1(vLd)}</span>`
-      : fmtN(vLd);
-    const ld1Badge = vLd1 === null ? '—' : m.type === 'str'
+      : fmtV(vLd);
+    const ld1Badge = m.type === 'str' && vLd1 !== null
       ? `<span class="badge ${strColor(vLd1, m.id.replace('str_',''))||''}">${fmt1(vLd1)}</span>`
-      : fmtN(vLd1);
+      : fmtV(vLd1);
 
-    const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob'
+    const separator = m.id === 'cancels' || m.id === 'netas_cash' || m.id === 'aprob' || m.id === 'gross_del'
       ? ' class="row-sep"' : '';
 
     return `<tr${separator}>
